@@ -1,0 +1,20 @@
+# Raspberry Pi GPIO and Hardware Control
+RPi.GPIO>=0.7.1
+
+# Camera support (Raspberry Pi Camera Module)
+picamera2>=0.3.12
+
+# WebSocket client for gateway communication
+websockets>=12.0
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Async support
+asyncio>=3.4.3
+
+# Image processing for camera frames
+Pillow>=10.0.0
+
+# JSON handling (built-in, listed for clarity)
+# json - standard library
