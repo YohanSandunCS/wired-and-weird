@@ -53,8 +53,23 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
   const [deliveredQrs, setDeliveredQrs] = useState<string[]>([])
   const [tempC, setTempC] = useState<number>(14)
   const [tempHistory, setTempHistory] = useState<number[]>([])
+  const [weightHistory, setWeightHistory] = useState<number[]>([])
   const tempIntervalRef = useRef<number | null>(null)
   const dangerZoneIntervalRef = useRef<number | null>(null)
+
+  const totalWeight = useMemo(() => {
+    // Only count items that are loaded AND NOT delivered (if in unload mode)
+    // Actually, physically:
+    // - In Load Mode: loadedItems are on board.
+    // - In Unload Mode: loadedItems are on board. When we "deliver" one, it leaves the robot.
+    // So we should subtract delivered items from the weight.
+    const deliveredSet = new Set(deliveredQrs)
+    return loadedItems
+      .filter(item => !deliveredSet.has(item.qr))
+      .reduce((sum, item) => sum + item.weightGrams, 0)
+  }, [loadedItems, deliveredQrs])
+  const totalWeightRef = useRef(totalWeight)
+  useEffect(() => { totalWeightRef.current = totalWeight }, [totalWeight])
 
   // Helper first to avoid temporal dead zone
   function randInRange(min: number, max: number) {
@@ -110,6 +125,13 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
  
            return val
         })
+
+        // Also track weight history
+        setWeightHistory(h => {
+          const val = totalWeightRef.current
+          const newHistory = [...h, val]
+          return newHistory.length > 600 ? newHistory.slice(newHistory.length - 600) : newHistory
+        })
       }, 1000)
 
       // Start the first danger zone event
@@ -142,6 +164,12 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
         return points
       })
       
+      setWeightHistory(prev => {
+        if (prev.length > 0) return prev
+        const w = totalWeightRef.current
+        return Array(600).fill(w)
+      })
+
       // Then start simulation so the graph updates live
       startSimulation()
     }
@@ -532,8 +560,6 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
     }
   }
 
-  const totalWeight = useMemo(() => loadedItems.reduce((sum, item) => sum + item.weightGrams, 0), [loadedItems])
-
   return (
     <div className="bg-white rounded-lg shadow p-6">
       {/* Top section: Controls/Video on left, Thermo on right */}
@@ -595,7 +621,7 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
           </div>
         </div>
         {/* Right: Thermometer/Graph */}
-        <ThermoView isLoadMode={isLoadMode} tempC={tempC} history={tempHistory} totalWeight={totalWeight} />
+        <ThermoView isLoadMode={isLoadMode} tempC={tempC} tempHistory={tempHistory} totalWeight={totalWeight} weightHistory={weightHistory} />
       </div>
 
       {/* Main content below */}
@@ -627,7 +653,7 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
   )
 }
 
-function ThermoView({ isLoadMode, tempC, history, totalWeight }: { isLoadMode: boolean; tempC: number; history: number[]; totalWeight: number }) {
+function ThermoView({ isLoadMode, tempC, tempHistory, totalWeight, weightHistory }: { isLoadMode: boolean; tempC: number; tempHistory: number[]; totalWeight: number; weightHistory: number[] }) {
   // Calculates a color from green to red based on temperature deviation from the ideal range.
   function getTempColor(temp: number): string {
     const ideal = 5
@@ -816,52 +842,76 @@ function ThermoView({ isLoadMode, tempC, history, totalWeight }: { isLoadMode: b
       </div>
     )
   }
-  // Unload: simple SVG line chart over 10 minutes (600 points, 1s step)
-  const width = 468
-  const height = 140
+  
+  // Unload: Two side-by-side SVG line charts (flex container)
+  const chartHeight = 140
   const padding = 32
-  const minAxis = 0, maxAxis = 10 // Adjusted for 2-8C range
-  
-  // Use fixed scale based on max capacity (600 points = 10 mins)
-  // This calculates the position for the i-th point in the history array
-  // If history is full (600), it spans the whole width.
-  // If history is partial, it spans a fraction.
-  // BUT: user might want to see the "Last 10 minutes".
-  // If we have 600 points, point 0 is T-10m, point 599 is Now.
-  // If we have 60 points (1 min), point 0 is T-1m, point 59 is Now.
-  // Should we stretch it? No, keeping time scale consistent is better.
-  // Let's assume the X axis is "Time Window" of 10 minutes.
-  
-  // Actually, if we want to show the collected history, usually we Plot it from Left to Right.
-  // If we have < 10 mins of data, it will fill only part of the graph.
-  const maxPoints = 599 // 0..599
-  const xScale = (i: number) => padding + (i / maxPoints) * (width - padding * 2)
-  
-  const yScale = (v: number) => {
-    const t = (v - minAxis) / (maxAxis - minAxis)
-    return padding - 20 + (1 - t) * (height - padding * 2)
+  const maxPoints = 599 // 600 points total
+
+  // --- Temp Graph Conf ---
+  const tempMin = 0, tempMax = 10
+  const tempWidth = 240 // narrower
+  const tempXScale = (i: number) => padding + (i / maxPoints) * (tempWidth - padding * 2)
+  const tempYScale = (v: number) => {
+    const t = (v - tempMin) / (tempMax - tempMin)
+    return padding - 20 + (1 - t) * (chartHeight - padding * 2)
   }
-  const pathD = history.map((v, i) => `${i === 0 ? 'M' : 'L'}${xScale(i)},${yScale(v)}`).join(' ')
+  const tempPath = tempHistory.map((v, i) => `${i === 0 ? 'M' : 'L'}${tempXScale(i)},${tempYScale(v)}`).join(' ')
+
+  // --- Weight Graph Conf ---
+  const weightMin = 0, weightMax = 500
+  const weightWidth = 240 // same width
+  const weightXScale = (i: number) => padding + (i / maxPoints) * (weightWidth - padding * 2)
+  const weightYScale = (v: number) => {
+    // Clamp v to max just in case
+    const safeV = Math.min(v, weightMax)
+    const t = (safeV - weightMin) / (weightMax - weightMin)
+    return padding - 20 + (1 - t) * (chartHeight - padding * 2)
+  }
+  const weightPath = weightHistory.map((v, i) => `${i === 0 ? 'M' : 'L'}${weightXScale(i)},${weightYScale(v)}`).join(' ')
+
   return (
-    <div className="mb-4">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-gray-600">Recorded Payload Temperature</span>
-        <span className="text-sm font-semibold text-gray-900">Now: {tempC.toFixed(1)}°C</span>
+    <div className="mb-4 flex flex-row gap-4">
+      {/* Temp Graph */}
+      <div className="flex-1">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-gray-600 font-semibold truncate">Temp History</span>
+          <span className="text-xs font-bold text-blue-600">{tempC.toFixed(1)}°C</span>
+        </div>
+        <div className="bg-gray-100 rounded-lg p-2 overflow-hidden flex justify-center">
+          <svg width={tempWidth} height={chartHeight - 20} className="block">
+             <rect x={0} y={0} width={tempWidth} height={chartHeight} fill="none"/>
+             {/* Y-Axis Labels */}
+             <text x={padding - 4} y={padding} textAnchor="end" dominantBaseline="middle" className="text-[10px] fill-gray-500">{tempMax}°</text>
+             <text x={padding - 4} y={chartHeight - padding - 10} textAnchor="end" dominantBaseline="middle" className="text-[10px] fill-gray-500">{tempMin}°</text>
+             {/* Axis Lines */}
+             <line x1={padding} y1={chartHeight - padding - 10} x2={tempWidth - padding} y2={chartHeight - padding - 10} stroke="#e5e7eb" strokeWidth={2} />
+             <line x1={padding} y1={padding - 10} x2={padding} y2={chartHeight - padding - 10} stroke="#e5e7eb" strokeWidth={2} />
+             
+             <path d={tempPath} stroke="#3b82f6" strokeWidth={2} fill="none" strokeLinejoin="round" />
+          </svg>
+        </div>
       </div>
-      <div className="bg-gray-100 rounded p-2 overflow-x-auto" style={{borderRadius : '8px'}}>
-        <svg width={width} height={height - 20} className="block">
-          <rect x={0} y={0} width={width} height={height} fill="#f3f4f6" rx={8} />
-          {/* Y-Axis Labels */}
-          <text x={padding - 4} y={padding} textAnchor="end" dominantBaseline="middle" className="text-xs fill-gray-500">{maxAxis}°C</text>
-          <text x={padding - 4} y={height - padding - 10} textAnchor="end" dominantBaseline="middle" className="text-xs fill-gray-500">{minAxis}°C</text>
-          {/* Axis Lines */}
-          <line x1={padding} y1={height - padding - 10} x2={width - padding} y2={height - padding - 10} stroke="#cccccc" strokeWidth={2} />
-          <line x1={padding} y1={padding - 10} x2={padding} y2={height - padding - 10} stroke="#cccccc" strokeWidth={2} />
-          <path d={pathD} stroke="#3b82f6" strokeWidth={2} fill="none" />
-          {/* X-Axis Labels */}
-          <text x={padding} y={height - padding + 4} textAnchor="middle" className="text-xs fill-gray-500">0 min</text>
-          <text x={width - padding} y={height - padding + 4} textAnchor="middle" className="text-xs fill-gray-500">10 min</text>
-        </svg>
+
+      {/* Weight Graph */}
+      <div className="flex-1">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-gray-600 font-semibold truncate">Weight History</span>
+          <span className="text-xs font-bold text-orange-600">{Math.round(totalWeight)}g</span>
+        </div>
+        <div className="bg-gray-100 rounded-lg p-2 overflow-hidden flex justify-center">
+          <svg width={weightWidth} height={chartHeight - 20} className="block">
+             <rect x={0} y={0} width={weightWidth} height={chartHeight} fill="none"/>
+             {/* Y-Axis Labels */}
+             <text x={padding - 4} y={padding} textAnchor="end" dominantBaseline="middle" className="text-[10px] fill-gray-500">{weightMax}g</text>
+             <text x={padding - 4} y={chartHeight - padding - 10} textAnchor="end" dominantBaseline="middle" className="text-[10px] fill-gray-500">{weightMin}g</text>
+             {/* Axis Lines */}
+             <line x1={padding} y1={chartHeight - padding - 10} x2={weightWidth - padding} y2={chartHeight - padding - 10} stroke="#e5e7eb" strokeWidth={2} />
+             <line x1={padding} y1={padding - 10} x2={padding} y2={chartHeight - padding - 10} stroke="#e5e7eb" strokeWidth={2} />
+             
+             <path d={weightPath} stroke="#f97316" strokeWidth={2} fill="none" strokeLinejoin="round" />
+          </svg>
+        </div>
       </div>
     </div>
   )
