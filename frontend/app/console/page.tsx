@@ -1,16 +1,18 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import useAppStore from '@/store/appStore'
 import RobotEnrollmentForm from '@/components/RobotEnrollmentForm'
 import RobotList from '@/components/RobotList'
 import RobotConnectionPanel from '@/components/RobotConnectionPanel'
 import BatteryStatus from '@/components/BatteryStatus'
+import RobotMedicalItemLoadUnload from '@/components/RobotMedicalItemLoadUnload'
 
 export default function ConsolePage() {
   const router = useRouter()
   const { teamSession, logout, activeRobotId, robots } = useAppStore()
+  const [isLoadMode, setIsLoadMode] = useState(true)
 
   // Redirect if not logged in
   useEffect(() => {
@@ -113,7 +115,41 @@ export default function ConsolePage() {
             <RobotConnectionPanel />
           </div>
         </div>
+
+        
+        {/* Medical Item Panels: Load + Unload on first row, Monitor full width below */}
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Row 1 */}
+          <div className="bg-white shadow-sm rounded-lg p-6">
+            <ConsoleLoadHeader isLoadMode={isLoadMode} onToggle={() => setIsLoadMode(prev => !prev)} />
+            <RobotMedicalItemLoadUnload isLoadMode={isLoadMode} />
+          </div>          
+        </div>
       </main>
+    </div>
+  )
+}
+
+
+function ConsoleLoadHeader({ isLoadMode, onToggle }: { isLoadMode: boolean; onToggle: () => void }) {
+  return (
+    <div className="flex items-start justify-between mb-4">
+      <h2 className="text-lg font-medium text-gray-900">
+        {isLoadMode ? 'Load Medical Items' : 'Unload Medical Items'}
+      </h2>
+      <label className="inline-flex items-center gap-2 text-sm select-none" title="Toggle load/unload mode">
+        <span className="text-gray-600">Mode</span>
+        <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isLoadMode ? 'bg-blue-600' : 'bg-gray-300'}`}>
+          <input
+            type="checkbox"
+            checked={isLoadMode}
+            onChange={onToggle}
+            className="absolute w-full h-full opacity-0 cursor-pointer"
+            aria-label="Toggle load/unload mode"
+          />
+          <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isLoadMode ? 'translate-x-6' : 'translate-x-1'}`} />
+        </span>
+      </label>
     </div>
   )
 }
