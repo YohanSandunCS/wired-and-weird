@@ -133,23 +133,29 @@ export default function ConsolePage() {
 
 function ConsoleLoadHeader({ isLoadMode, onToggle }: { isLoadMode: boolean; onToggle: () => void }) {
   return (
-    <div className="flex items-start justify-between mb-4">
-      <h2 className="text-lg font-medium text-gray-900">
-        {isLoadMode ? 'Load Medical Items' : 'Unload Medical Items'}
-      </h2>
-      <label className="inline-flex items-center gap-2 text-sm select-none" title="Toggle load/unload mode">
-        <span className="text-gray-600">Mode</span>
-        <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isLoadMode ? 'bg-blue-600' : 'bg-gray-300'}`}>
-          <input
-            type="checkbox"
-            checked={isLoadMode}
-            onChange={onToggle}
-            className="absolute w-full h-full opacity-0 cursor-pointer"
-            aria-label="Toggle load/unload mode"
-          />
-          <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isLoadMode ? 'translate-x-6' : 'translate-x-1'}`} />
-        </span>
-      </label>
+    <div className="flex justify-center mb-6">
+      <div className="bg-gray-100 p-1 rounded-lg inline-flex shadow-inner items-center h-[48px]">
+        <button
+          onClick={() => !isLoadMode && onToggle()}
+          className={`px-6 h-full rounded-md font-medium transition-all duration-200 flex items-center ${
+            isLoadMode
+              ? 'bg-white text-gray-900 shadow-sm text-[16px]'
+              : 'text-gray-500 hover:text-gray-700 text-sm'
+          }`}
+        >
+          Load Medical Items
+        </button>
+        <button
+          onClick={() => isLoadMode && onToggle()}
+          className={`px-6 h-full rounded-md font-medium transition-all duration-200 flex items-center ${
+            !isLoadMode
+              ? 'bg-white text-gray-900 shadow-sm text-[16px]'
+              : 'text-gray-500 hover:text-gray-700 text-sm'
+          }`}
+        >
+          Unload Medical Items
+        </button>
+      </div>
     </div>
   )
 }

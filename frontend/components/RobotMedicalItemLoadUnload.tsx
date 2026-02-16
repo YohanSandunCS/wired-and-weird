@@ -686,7 +686,7 @@ function ThermoView({ isLoadMode, tempC, history, totalWeight }: { isLoadMode: b
           <span className="text-sm text-gray-600">Payload Temperature</span>
           <span className="text-sm text-gray-600">Total Weight</span>
         </div>
-        <div className="bg-gray-100 rounded p-2 flex gap-4" style={{ gap: '92px', paddingLeft: '24px', paddingRight: '24px' }}>
+        <div className="bg-gray-100 rounded p-2 flex gap-4" style={{ gap: '92px', paddingLeft: '24px', paddingRight: '24px', borderRadius: '8px'}}>
           {/* Temperature Bar */}
           <div className="relative block" style={{ width: w, height: h }}>
             {/* 1. The full-height colored bar (bottom layer) */}
@@ -823,7 +823,7 @@ function ThermoView({ isLoadMode, tempC, history, totalWeight }: { isLoadMode: b
   
   const yScale = (v: number) => {
     const t = (v - minAxis) / (maxAxis - minAxis)
-    return padding + (1 - t) * (height - padding * 2)
+    return padding - 20 + (1 - t) * (height - padding * 2)
   }
   const pathD = history.map((v, i) => `${i === 0 ? 'M' : 'L'}${xScale(i)},${yScale(v)}`).join(' ')
   return (
@@ -832,19 +832,19 @@ function ThermoView({ isLoadMode, tempC, history, totalWeight }: { isLoadMode: b
         <span className="text-sm text-gray-600">Recorded Payload Temperature</span>
         <span className="text-sm font-semibold text-gray-900">Now: {tempC.toFixed(1)}°C</span>
       </div>
-      <div className="bg-gray-100 rounded p-2 overflow-x-auto">
-        <svg width={width} height={height} className="block">
+      <div className="bg-gray-100 rounded p-2 overflow-x-auto" style={{borderRadius : '8px'}}>
+        <svg width={width} height={height - 20} className="block">
           <rect x={0} y={0} width={width} height={height} fill="#f3f4f6" rx={8} />
           {/* Y-Axis Labels */}
           <text x={padding - 4} y={padding} textAnchor="end" dominantBaseline="middle" className="text-xs fill-gray-500">{maxAxis}°C</text>
-          <text x={padding - 4} y={height - padding} textAnchor="end" dominantBaseline="middle" className="text-xs fill-gray-500">{minAxis}°C</text>
+          <text x={padding - 4} y={height - padding - 10} textAnchor="end" dominantBaseline="middle" className="text-xs fill-gray-500">{minAxis}°C</text>
           {/* Axis Lines */}
-          <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#888888" strokeWidth={2} />
-          <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#888888" strokeWidth={2} />
+          <line x1={padding} y1={height - padding - 10} x2={width - padding} y2={height - padding - 10} stroke="#cccccc" strokeWidth={2} />
+          <line x1={padding} y1={padding - 10} x2={padding} y2={height - padding - 10} stroke="#cccccc" strokeWidth={2} />
           <path d={pathD} stroke="#3b82f6" strokeWidth={2} fill="none" />
           {/* X-Axis Labels */}
-          <text x={padding} y={height - padding + 14} textAnchor="middle" className="text-xs fill-gray-500">0 min</text>
-          <text x={width - padding} y={height - padding + 14} textAnchor="middle" className="text-xs fill-gray-500">10 min</text>
+          <text x={padding} y={height - padding + 4} textAnchor="middle" className="text-xs fill-gray-500">0 min</text>
+          <text x={width - padding} y={height - padding + 4} textAnchor="middle" className="text-xs fill-gray-500">10 min</text>
         </svg>
       </div>
     </div>
