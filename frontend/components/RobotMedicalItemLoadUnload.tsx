@@ -646,7 +646,7 @@ function ThermoView({ isLoadMode, tempC, history, totalWeight }: { isLoadMode: b
           <span className="text-sm text-gray-600">Payload Temperature</span>
           <span className="text-sm text-gray-600">Total Weight</span>
         </div>
-        <div className="bg-gray-100 rounded p-2 flex gap-4">
+        <div className="bg-gray-100 rounded p-2 flex gap-4" style={{ gap: '92px', paddingLeft: '24px', paddingRight: '24px' }}>
           {/* Temperature Bar */}
           <div className="relative block" style={{ width: w, height: h }}>
             {/* 1. The full-height colored bar (bottom layer) */}
@@ -749,14 +749,14 @@ function ThermoView({ isLoadMode, tempC, history, totalWeight }: { isLoadMode: b
             {/* 4. SVG for axes and labels (top layer) */}
             <svg width={w} height={h} className="absolute inset-0 pointer-events-none">
               {/* Y-Axis Labels */}
-              <text x={w - 4} y={20} textAnchor="end" className="text-xs fill-gray-500">
+              <text x={w - 12} y={20} textAnchor="end" className="text-xs fill-gray-500">
                 {weightMaxAxis}g
               </text>
-              <text x={w - 4} y={h - 16} textAnchor="end" className="text-xs fill-gray-500">
+              <text x={w - 12} y={h - 16} textAnchor="end" className="text-xs fill-gray-500">
                 {weightMinAxis}g
               </text>
               {/* Axis Lines */}
-              <line x1={w - 32} y1={16} x2={w - 32} y2={h - 16} stroke="#cccccc" strokeWidth={2} />
+              <line x1={w - 48} y1={16} x2={w - 48} y2={h - 16} stroke="#cccccc" strokeWidth={2} />
             </svg>
           </div>
         </div>
