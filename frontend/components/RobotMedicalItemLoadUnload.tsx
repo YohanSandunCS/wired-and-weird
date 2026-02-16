@@ -619,10 +619,24 @@ function ThermoView({ isLoadMode, tempC, history, totalWeight }: { isLoadMode: b
   }
 
   function getWeightColor(weight: number): string {
-    const maxWeight = 500
-    const t = Math.min(1, weight / maxWeight)
-    const hue = 210 - t * 60 // Blue (210) to purple (150)
-    return `hsl(${hue}, 80%, 60%)`
+    // 0g-250g -> Green (120), 320g -> Orange (30), 500g+ -> Red (0)
+    let hue: number
+    const w = Math.max(0, weight)
+
+    if (w <= 250) {
+      // Range 0 -> 250 (Solid Green)
+      hue = 120
+    } else if (w <= 320) {
+      // Range 250 -> 320 (Green to Orange)
+      const t = (w - 250) / (320 - 250)
+      hue = 120 - t * (120 - 30) // 120 -> 30
+    } else {
+      // Range 320 -> 500+ (Orange to Red)
+      const t = Math.min(1, (w - 320) / (500 - 320))
+      hue = 30 - t * 30 // 30 -> 0
+    }
+    
+    return `hsl(${hue}, 80%, 50%)`
   }
 
   if (isLoadMode) {
@@ -658,7 +672,6 @@ function ThermoView({ isLoadMode, tempC, history, totalWeight }: { isLoadMode: b
                 top: graphAreaY,
                 height: graphAreaHeight,
                 backgroundColor: getTempColor(tempC),
-                borderRadius: '4px',
                 transition: 'background-color 0.5s ease',
               }}
             >
@@ -678,8 +691,6 @@ function ThermoView({ isLoadMode, tempC, history, totalWeight }: { isLoadMode: b
                 height: `${tempMaskHeight}px`,
                 backgroundColor: '#f3f4f6', // Same as SVG background
                 transition: 'height 0.5s ease',
-                borderTopLeftRadius: '4px',
-                borderTopRightRadius: '4px',
               }}
             >
               {/* 3b. The gray label, stationary inside the mask */}
