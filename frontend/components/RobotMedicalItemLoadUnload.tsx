@@ -17,6 +17,7 @@ type MedicalItem = {
   priority: string
   collectionTime: string
   qr: string
+  weightGrams: number
 }
 
 type LogLevel = 'info' | 'warn' | 'error' | 'success'
@@ -617,7 +618,7 @@ function ThermoView({ isLoadMode, tempC, history }: { isLoadMode: boolean; tempC
 
   if (isLoadMode) {
     const minAxis = 0, maxAxis = 10
-    const w = 480, h = 120
+    const w = 220, h = 120 // Reduced width from 480 to 220
     const graphAreaY = 16
     const graphAreaHeight = h - 32
 
@@ -629,16 +630,17 @@ function ThermoView({ isLoadMode, tempC, history }: { isLoadMode: boolean; tempC
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-gray-600">Payload Temperature</span>
+          <span className="text-sm text-gray-600">New Control</span>
         </div>
-        <div className="bg-gray-100 rounded p-2 overflow-x-auto relative">
-          {/* The main container for the graph elements */}
-          <div style={{ width: w, height: h }} className="relative block">
+        <div className="bg-gray-100 rounded p-2 flex gap-4">
+          {/* Temperature Bar */}
+          <div className="relative block" style={{ width: w, height: h }}>
             {/* 1. The full-height colored bar (bottom layer) */}
-            <div 
+            <div
               className="absolute"
               style={{
                 left: 32,
-                right: 16,
+                right: 0, // Adjusted for new width
                 top: graphAreaY,
                 height: graphAreaHeight,
                 backgroundColor: getTempColor(tempC),
@@ -648,9 +650,7 @@ function ThermoView({ isLoadMode, tempC, history }: { isLoadMode: boolean; tempC
             >
               {/* 3a. The white label, stationary inside the colored bar */}
               <div className="relative w-full h-full flex items-center justify-center">
-                <span className="text-3xl font-bold text-white">
-                  {tempC.toFixed(1)}°C
-                </span>
+                <span className="text-3xl font-bold text-white">{tempC.toFixed(1)}°C</span>
               </div>
             </div>
 
@@ -659,7 +659,7 @@ function ThermoView({ isLoadMode, tempC, history }: { isLoadMode: boolean; tempC
               className="absolute overflow-hidden"
               style={{
                 left: 32,
-                right: 16,
+                right: 0, // Adjusted for new width
                 top: graphAreaY,
                 height: `${maskHeight}px`,
                 backgroundColor: '#f3f4f6', // Same as SVG background
@@ -670,20 +670,31 @@ function ThermoView({ isLoadMode, tempC, history }: { isLoadMode: boolean; tempC
             >
               {/* 3b. The gray label, stationary inside the mask */}
               <div className="relative w-full h-full flex justify-center">
-                 <span className="absolute text-3xl font-bold text-gray-400" style={{ top: '25px' }}>
+                <span className="absolute text-3xl font-bold text-gray-400" style={{ top: '25px' }}>
                   {tempC.toFixed(1)}°C
                 </span>
               </div>
             </div>
-            
+
             {/* 4. SVG for axes and labels (top layer) */}
             <svg width={w} height={h} className="absolute inset-0 pointer-events-none">
               {/* Y-Axis Labels */}
-              <text x={24} y={20} textAnchor="end" className="text-xs fill-gray-500">{maxAxis}°C</text>
-              <text x={24} y={h - 16} textAnchor="end" className="text-xs fill-gray-500">{minAxis}°C</text>
+              <text x={24} y={20} textAnchor="end" className="text-xs fill-gray-500">
+                {maxAxis}°C
+              </text>
+              <text x={24} y={h - 16} textAnchor="end" className="text-xs fill-gray-500">
+                {minAxis}°C
+              </text>
               {/* Axis Lines */}
               <line x1={32} y1={16} x2={32} y2={h - 16} stroke="#cccccc" strokeWidth={2} />
             </svg>
+          </div>
+          {/* Placeholder for new control */}
+          <div
+            className="bg-gray-300 rounded-md flex-grow flex items-center justify-center"
+            style={{ height: h }}
+          >
+            <span className="text-gray-500 text-sm">Placeholder</span>
           </div>
         </div>
       </div>
@@ -757,6 +768,7 @@ function Card({ item, lastAddedQr, flashQr, delivered, isLoadMode, onDelete }: {
         <Row label="Sample" value={item.sampleId} />
         <Row label="Test" value={item.testType} />
         <Row label="Container" value={item.container} />
+        <Row label="Weight" value={`${item.weightGrams} g`} />
         <Row label="Destination" value={item.destination} />
       </dl>
       <div className="mt-3 flex justify-end">

@@ -10,7 +10,8 @@
         "destination": "Klinisk Kjemi",
         "priority": "RASK",
         "collectionTime": "2025-11-27 08:14",
-        "qr": "S24-000981|FBC|EDTA|Mottak2C|Rask"
+        "qr": "S24-000981|FBC|EDTA|Mottak2C|Rask",
+        "weightGrams": 18.7
     },
     {
         "patientName": "AAS, INGRID",
@@ -23,7 +24,8 @@
         "destination": "Klinisk Kjemi",
         "priority": "HASTER",
         "collectionTime": "2025-11-27 09:02",
-        "qr": "S24-000982|LFT|SST|S4B|Haster"
+        "qr": "S24-000982|LFT|SST|S4B|Haster",
+        "weightGrams": 19.9
     },
     {
         "patientName": "GUNDERSEN, LARS",
@@ -36,7 +38,8 @@
         "destination": "Mikrobiologi",
         "priority": "VANLIG",
         "collectionTime": "2025-11-27 08:55",
-        "qr": "S24-000983|URT|UrineCup|UroPol|Vanlig"
+        "qr": "S24-000983|URT|UrineCup|UroPol|Vanlig",
+        "weightGrams": 128.4
     },
     {
         "patientName": "ØDEGÅRD, MARI",
@@ -49,7 +52,8 @@
         "destination": "Mikrobiologi",
         "priority": "RASK",
         "collectionTime": "2025-11-27 08:47",
-        "qr": "S24-000984|STC|StoolTube|Inf3A|Rask"
+        "qr": "S24-000984|STC|StoolTube|Inf3A|Rask",
+        "weightGrams": 42.6
     },
     {
         "patientName": "HALVORSEN, EIRIK",
@@ -62,7 +66,8 @@
         "destination": "Klinisk Kjemi – Akuttlab",
         "priority": "AKUTT",
         "collectionTime": "2025-11-27 08:22",
-        "qr": "S24-000985|CRP|SST|Akutt|Akutt"
+        "qr": "S24-000985|CRP|SST|Akutt|Akutt",
+        "weightGrams": 20.8
     },
     {
         "patientName": "HAUG, SILJE",
@@ -75,7 +80,8 @@
         "destination": "Klinisk Kjemi",
         "priority": "RASK",
         "collectionTime": "2025-11-27 09:10",
-        "qr": "S24-000986|KFT|Heparin|Neph5D|Rask"
+        "qr": "S24-000986|KFT|Heparin|Neph5D|Rask",
+        "weightGrams": 21.3
     },
     {
         "patientName": "LERVIK, NORA",
@@ -88,7 +94,8 @@
         "destination": "Klinisk Kjemi",
         "priority": "VANLIG",
         "collectionTime": "2025-11-27 07:56",
-        "qr": "S24-000987|LIP|SST|APol|Vanlig"
+        "qr": "S24-000987|LIP|SST|APol|Vanlig",
+        "weightGrams": 19.4
     },
     {
         "patientName": "BJØRNSEN, SINDRE",
@@ -101,7 +108,8 @@
         "destination": "Klinisk Kjemi – Endokrinologi",
         "priority": "RASK",
         "collectionTime": "2025-11-27 08:41",
-        "qr": "S24-000988|HBA1c|EDTA|Endo2B|Rask"
+        "qr": "S24-000988|HBA1c|EDTA|Endo2B|Rask",
+        "weightGrams": 18.1
     },
     {
         "patientName": "STRØMSTAD, EMILIE",
@@ -114,7 +122,8 @@
         "destination": "Klinisk Kjemi – Akuttlab",
         "priority": "HASTER",
         "collectionTime": "2025-11-27 09:12",
-        "qr": "S24-000989|ELE|Heparin|M1A|Haster"
+        "qr": "S24-000989|ELE|Heparin|M1A|Haster",
+        "weightGrams": 22.4
     },
     {
         "patientName": "MØRK, JONAS",
@@ -127,7 +136,8 @@
         "destination": "Mikrobiologi – Dyrkning",
         "priority": "RASK",
         "collectionTime": "2025-11-27 08:33",
-        "qr": "S24-000990|URC|UrineCup|MiLab|Rask"
+        "qr": "S24-000990|URC|UrineCup|MiLab|Rask",
+        "weightGrams": 134.7
     },
     {
         "patientName": "DAHL, VILDE",
@@ -140,7 +150,8 @@
         "destination": "Akutt Kardiologi Lab",
         "priority": "AKUTT",
         "collectionTime": "2025-11-27 09:21",
-        "qr": "S24-000991|TnI|SST|Hj3C|Akutt"
+        "qr": "S24-000991|TnI|SST|Hj3C|Akutt",
+        "weightGrams": 21.7
     },
     {
         "patientName": "NYGAARD, ERLEND",
@@ -153,7 +164,8 @@
         "destination": "Blodgassanalyse",
         "priority": "AKUTT",
         "collectionTime": "2025-11-27 09:18",
-        "qr": "S24-000992|BG|Heparin|Resp1B|Akutt"
+        "qr": "S24-000992|BG|Heparin|Resp1B|Akutt",
+        "weightGrams": 23.2
     },
     {
         "patientName": "EGELAND, KAREN",
@@ -166,7 +178,8 @@
         "destination": "Klinisk Kjemi",
         "priority": "RASK",
         "collectionTime": "2025-11-27 07:49",
-        "qr": "S24-000993|GLU|Fluoride|DiaPol|Rask"
+        "qr": "S24-000993|GLU|Fluoride|DiaPol|Rask",
+        "weightGrams": 19.2
     },
     {
         "patientName": "HOLTEN, MAGNUS",
@@ -179,7 +192,8 @@
         "destination": "Akutt Kjemi Lab",
         "priority": "HASTER",
         "collectionTime": "2025-11-27 09:05",
-        "qr": "S24-000994|DD|Citrate|Akutt|Haster"
+        "qr": "S24-000994|DD|Citrate|Akutt|Haster",
+        "weightGrams": 17.8
     },
     {
         "patientName": "HERMANSEN, ANNE",
@@ -192,7 +206,8 @@
         "destination": "Klinisk Kjemi – Urin",
         "priority": "VANLIG",
         "collectionTime": "2025-11-27 09:33",
-        "qr": "S24-000995|URX|UrineCup|Gyn|Vanlig"
+        "qr": "S24-000995|URX|UrineCup|Gyn|Vanlig",
+        "weightGrams": 118.6
     },
     {
         "patientName": "BERGSTRØM, OLA",
@@ -205,7 +220,8 @@
         "destination": "Hematologi",
         "priority": "VANLIG",
         "collectionTime": "2025-11-27 08:11",
-        "qr": "S24-000996|SR|EDTA|Rev4C|Vanlig"
+        "qr": "S24-000996|SR|EDTA|Rev4C|Vanlig",
+        "weightGrams": 19.6
     },
     {
         "patientName": "JORGENSEN, THEA",
@@ -218,7 +234,8 @@
         "destination": "Klinisk Kjemi",
         "priority": "RASK",
         "collectionTime": "2025-11-27 09:44",
-        "qr": "S24-000997|FER|SST|ALeg|Rask"
+        "qr": "S24-000997|FER|SST|ALeg|Rask",
+        "weightGrams": 20.3
     },
     {
         "patientName": "KRISTOFFERSEN, MADS",
@@ -231,7 +248,8 @@
         "destination": "Hematologi",
         "priority": "HASTER",
         "collectionTime": "2025-11-27 09:28",
-        "qr": "S24-000998|HEM|EDTA|Hem6B|Haster"
+        "qr": "S24-000998|HEM|EDTA|Hem6B|Haster",
+        "weightGrams": 18.9
     },
     {
         "patientName": "OTTESEN, LINE",
@@ -244,7 +262,8 @@
         "destination": "Klinisk Kjemi – Hormonanalyse",
         "priority": "RASK",
         "collectionTime": "2025-11-27 09:37",
-        "qr": "S24-000999|HCG|SST|Føde|Rask"
+        "qr": "S24-000999|HCG|SST|Føde|Rask",
+        "weightGrams": 19.8
     },
     {
         "patientName": "HAALAND, ERIK",
@@ -257,6 +276,7 @@
         "destination": "Akutt Kardiologi Lab",
         "priority": "HASTER",
         "collectionTime": "2025-11-27 08:59",
-        "qr": "S24-001000|BNP|EDTA|Kar5A|Haster"
+        "qr": "S24-001000|BNP|EDTA|Kar5A|Haster",
+        "weightGrams": 18.4
     }
 ]
