@@ -72,7 +72,13 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
       setTempC(prev => {
         const delta = dangerTarget - prev
         const step = delta * 0.2 // Move 20% of the way there
-        return parseFloat((prev + step).toFixed(1))
+        const next = parseFloat((prev + step).toFixed(1))
+        
+        // Add to history during danger zone updates too? 
+        // The main interval handles regular history updates. 
+        // If we want high-res updates during danger zone we could add here, 
+        // but let's stick to the 1s interval for history consistency.
+        return next
       })
       
       // Schedule the next danger event
@@ -87,39 +93,59 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
     tempIntervalRef.current = null
     dangerZoneIntervalRef.current = null
 
-    if (isLoadMode) {
-      // Live thermometer: random within 2-8 with gentle transitions
+    // Helper to start the temperature simulation
+    const startSimulation = () => {
       tempIntervalRef.current = window.setInterval(() => {
         setTempC(prev => {
           const target = randInRange(2, 8)
           const delta = target - prev
           const step = Math.max(Math.min(delta, 0.5), -0.5) // Slower transitions
           const next = Math.max(2, Math.min(8, prev + step))
-          return parseFloat(next.toFixed(1))
+          const val = parseFloat(next.toFixed(1))
+          
+          setTempHistory(h => {
+             const newHistory = [...h, val]
+             return newHistory.length > 600 ? newHistory.slice(newHistory.length - 600) : newHistory
+           })
+ 
+           return val
         })
-      }, 1500)
+      }, 1000)
 
-      // Start the first danger zone event after a delay
+      // Start the first danger zone event
+      // Danger zone events only affect current temp reading but propagate to history naturally
       const firstDangerInterval = randInRange(12000, 24000)
       dangerZoneIntervalRef.current = window.setTimeout(enterDangerZone, firstDangerInterval)
-
-    } else {
-      // Unload: precomputed 10-minute history (one value per 10s => 60 points)
-      const points: number[] = []
-      let current = randInRange(2, 8)
-      for (let i = 0; i < 60; i++) {
-        const target = randInRange(2, 8)
-        const delta = target - current
-        const step = Math.max(Math.min(delta, 0.4), -0.4)
-        current = Math.max(2, Math.min(8, current + step))
-        points.push(parseFloat(current.toFixed(1)))
-      }
-      // Defer state updates to avoid synchronous setState in effect
-      setTimeout(() => {
-        setTempHistory(points)
-        setTempC(points[points.length - 1])
-      }, 0)
     }
+
+    if (isLoadMode) {
+      // Just start simulation
+      startSimulation()
+    } else {
+      // In Unload mode:
+      // If history is empty (e.g. loaded directly into Unload), generate a dummy history first.
+      setTempHistory(prev => {
+        if (prev.length > 0) return prev
+        
+        // Fallback: Generate 10 mins of dummy data if none exists
+        const points: number[] = []
+        let current = randInRange(2, 8)
+        for (let i = 0; i < 600; i++) {
+          const target = randInRange(2, 8)
+          const delta = target - current
+          const step = Math.max(Math.min(delta, 0.2), -0.2)
+          current = Math.max(2, Math.min(8, current + step))
+          points.push(parseFloat(current.toFixed(1)))
+        }
+        // Update current temp to match the end of history
+        setTempC(points[points.length - 1])
+        return points
+      })
+      
+      // Then start simulation so the graph updates live
+      startSimulation()
+    }
+
     return () => {
       if (tempIntervalRef.current) {
         window.clearInterval(tempIntervalRef.current)
@@ -774,12 +800,27 @@ function ThermoView({ isLoadMode, tempC, history, totalWeight }: { isLoadMode: b
       </div>
     )
   }
-  // Unload: simple SVG line chart over 10 minutes (60 points, 10s step)
+  // Unload: simple SVG line chart over 10 minutes (600 points, 1s step)
   const width = 468
   const height = 140
   const padding = 32
   const minAxis = 0, maxAxis = 10 // Adjusted for 2-8C range
-  const xScale = (i: number) => padding + (i / Math.max(1, history.length - 1)) * (width - padding * 2)
+  
+  // Use fixed scale based on max capacity (600 points = 10 mins)
+  // This calculates the position for the i-th point in the history array
+  // If history is full (600), it spans the whole width.
+  // If history is partial, it spans a fraction.
+  // BUT: user might want to see the "Last 10 minutes".
+  // If we have 600 points, point 0 is T-10m, point 599 is Now.
+  // If we have 60 points (1 min), point 0 is T-1m, point 59 is Now.
+  // Should we stretch it? No, keeping time scale consistent is better.
+  // Let's assume the X axis is "Time Window" of 10 minutes.
+  
+  // Actually, if we want to show the collected history, usually we Plot it from Left to Right.
+  // If we have < 10 mins of data, it will fill only part of the graph.
+  const maxPoints = 599 // 0..599
+  const xScale = (i: number) => padding + (i / maxPoints) * (width - padding * 2)
+  
   const yScale = (v: number) => {
     const t = (v - minAxis) / (maxAxis - minAxis)
     return padding + (1 - t) * (height - padding * 2)
@@ -789,7 +830,7 @@ function ThermoView({ isLoadMode, tempC, history, totalWeight }: { isLoadMode: b
     <div className="mb-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-gray-600">Recorded Payload Temperature</span>
-        <span className="text-sm font-semibold text-gray-900">Last: {tempC.toFixed(1)}°C</span>
+        <span className="text-sm font-semibold text-gray-900">Now: {tempC.toFixed(1)}°C</span>
       </div>
       <div className="bg-gray-100 rounded p-2 overflow-x-auto">
         <svg width={width} height={height} className="block">
