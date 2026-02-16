@@ -478,51 +478,58 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      {/* Loading Controls */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start">
-        <div className="relative w-[256px] h-[144px] bg-gray-200 border border-gray-300 rounded overflow-hidden">
-          <video
-            ref={videoRef}
-            className={`w-full h-full object-cover ${hasStream ? 'block' : 'hidden'}`}
-            width={256}
-            height={144}
-            muted
-            playsInline
-          />
-          <canvas
-            ref={overlayCanvasRef}
-            className={`absolute inset-0 w-full h-full pointer-events-none ${hasStream ? 'block' : 'hidden'}`}
-          />
-          {!hasStream && (
-            <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-xs select-none">
-              No video feed
-            </div>
-          )}
+      {/* Top section: Controls/Video on left, Thermo on right */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {/* Left: Loading Controls */}
+        <div className="flex flex-col sm:flex-row gap-4 items-start">
+          <div className="relative w-[256px] h-[144px] bg-gray-200 border border-gray-300 rounded overflow-hidden">
+            <video
+              ref={videoRef}
+              className={`w-full h-full object-cover ${hasStream ? 'block' : 'hidden'}`}
+              width={256}
+              height={144}
+              muted
+              playsInline
+            />
+            <canvas
+              ref={overlayCanvasRef}
+              className={`absolute inset-0 w-full h-full pointer-events-none ${hasStream ? 'block' : 'hidden'}`}
+            />
+            {!hasStream && (
+              <div className="absolute inset-0 flex items-center justify-center text-gray-500">
+                No video feed
+              </div>
+            )}
+          </div>
+          <div className="flex flex-row sm:flex-col gap-3">
+            <button
+              type="button"
+              onClick={handleStart}
+              disabled={isLoading}
+              className="px-4 py-2 rounded-md text-white font-semibold bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 transition"
+            >
+              Start Loading
+            </button>
+            <button
+              type="button"
+              onClick={handleStop}
+              disabled={!isLoading}
+              className="px-4 py-2 rounded-md text-white font-semibold bg-red-600 hover:bg-red-700 disabled:bg-gray-400 transition"
+            >
+              Stop Loading
+            </button>
+          </div>
         </div>
-        <div className="flex flex-row sm:flex-col gap-3">
-          <button
-            type="button"
-            onClick={handleStart}
-            disabled={isLoading}
-            className={`px-4 py-2 rounded text-white text-sm font-medium shadow-sm transition-colors ${isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
-          >
-            {isLoadMode ? 'Start Loading' : 'Start Unloading'}
-          </button>
-          <button
-            type="button"
-            onClick={handleStop}
-            disabled={!isLoading}
-            className={`px-4 py-2 rounded text-white text-sm font-medium shadow-sm transition-colors ${!isLoading ? 'bg-red-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'}`}
-          >
-            {isLoadMode ? 'Stop Loading' : 'Stop Unloading'}
-          </button>
-        </div>
+        {/* Right: Thermometer/Graph */}
+        <ThermoView isLoadMode={isLoadMode} tempC={tempC} history={tempHistory} />
       </div>
+
+      {/* Main content below */}
       <StatusBar lastScanned={lastScanned} loadedCount={loadedItems.length} error={scanError} />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {loadedItems.length === 0 && (
-          <div className="col-span-1 sm:col-span-2 text-center text-xs text-gray-500 py-8 border border-dashed rounded">
-            No items loaded yet. Present a QR code to the camera.
+          <div className="text-gray-500 italic py-4 col-span-full">
+            No items loaded yet. Start scanning to add items.
           </div>
         )}
         {loadedItems.map(item => (
@@ -540,8 +547,7 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
       <p className="text-xs text-gray-500 mt-4">
         Loaded items: {loadedItems.length} / {allItems.length}. Unique matches only.
       </p>
-      {/* Thermometer/Graph placed above logs */}
-      <ThermoView isLoadMode={isLoadMode} tempC={tempC} history={tempHistory} />
+      
       <LogPanel logs={logs} showLogs={showLogs} onToggle={() => setShowLogs((s: boolean) => !s)} />
     </div>
   )

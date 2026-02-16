@@ -90,7 +90,7 @@ export default function ConsolePage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column: Robot Enrollment */}
+          {/* Left Column: Robot Enrollment & List */}
           <div className="space-y-6">
             <div className="bg-white shadow-sm rounded-lg p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">
@@ -108,22 +108,22 @@ export default function ConsolePage() {
           </div>
 
           {/* Right Column: Connection Panel */}
-          <div className="bg-white shadow-sm rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">
-              Robot Connection
-            </h2>
-            <RobotConnectionPanel />
+          <div className="space-y-6">
+            <div className="bg-white shadow-sm rounded-lg p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">
+                Robot Connection
+              </h2>
+              <RobotConnectionPanel />
+            </div>
           </div>
         </div>
 
-        
-        {/* Medical Item Panels: Load + Unload on first row, Monitor full width below */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Row 1 */}
+        {/* Medical Item Panels: Full-width below */}
+        <div className="mt-6">
           <div className="bg-white shadow-sm rounded-lg p-6">
             <ConsoleLoadHeader isLoadMode={isLoadMode} onToggle={() => setIsLoadMode(prev => !prev)} />
             <RobotMedicalItemLoadUnload isLoadMode={isLoadMode} />
-          </div>          
+          </div>
         </div>
       </main>
     </div>
