@@ -555,26 +555,42 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
             />
             {!hasStream && (
               <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-                No video feed
+                QR code scanner
               </div>
             )}
           </div>
-          <div className="flex flex-row sm:flex-col gap-3">
+          <div className="flex flex-col gap-3">
             <button
               type="button"
               onClick={handleStart}
               disabled={isLoading}
-              className="px-4 py-2 rounded-md text-white font-semibold bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 transition"
+              className={`px-4 py-2 rounded-md text-white font-semibold flex items-center gap-2 transition disabled:bg-gray-400 
+                ${isLoadMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-800 hover:bg-blue-900'}`}
             >
-              Start Loading
+              {isLoadMode ? (
+                // Load Icon: Arrow pointing down into tray
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              ) : (
+                // Unload Icon: Arrow pointing up out of tray
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+              )}
+              {isLoadMode ? 'Start Loading' : 'Start Unloading'}
             </button>
             <button
               type="button"
               onClick={handleStop}
               disabled={!isLoading}
-              className="px-4 py-2 rounded-md text-white font-semibold bg-red-600 hover:bg-red-700 disabled:bg-gray-400 transition"
+              className={`px-4 py-2 rounded-md text-white font-semibold flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 transition`}
             >
-              Stop Loading
+               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+              </svg>
+              {isLoadMode ? 'Stop Loading' : 'Stop Unloading'}
             </button>
           </div>
         </div>
@@ -587,7 +603,7 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {loadedItems.length === 0 && (
           <div className="text-gray-500 italic py-4 col-span-full">
-            No items loaded yet. Start scanning to add items.
+            No items loaded yet. Please start scanning to add items.
           </div>
         )}
         {loadedItems.map(item => (
