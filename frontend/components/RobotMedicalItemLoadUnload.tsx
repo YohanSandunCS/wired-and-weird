@@ -53,6 +53,7 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
   const [tempC, setTempC] = useState<number>(14)
   const [tempHistory, setTempHistory] = useState<number[]>([])
   const tempIntervalRef = useRef<number | null>(null)
+  const dangerZoneIntervalRef = useRef<number | null>(null)
 
   // Helper first to avoid temporal dead zone
   function randInRange(min: number, max: number) {
@@ -61,31 +62,55 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
 
   // Regenerate thermometer/graph data on mode change
   useEffect(() => {
-    // Clear any previous intervals
-    if (tempIntervalRef.current) {
-      window.clearInterval(tempIntervalRef.current)
-      tempIntervalRef.current = null
+    // --- Helper for danger zone logic ---
+    const enterDangerZone = () => {
+      const goHigh = Math.random() > 0.5
+      const dangerTarget = goHigh ? randInRange(7, 9) : randInRange(1, 3)
+      
+      // Temporarily override the main interval to move towards the danger temp
+      setTempC(prev => {
+        const delta = dangerTarget - prev
+        const step = delta * 0.2 // Move 20% of the way there
+        return parseFloat((prev + step).toFixed(1))
+      })
+      
+      // Schedule the next danger event
+      const nextDangerInterval = randInRange(12000, 24000)
+      if (dangerZoneIntervalRef.current) clearTimeout(dangerZoneIntervalRef.current)
+      dangerZoneIntervalRef.current = window.setTimeout(enterDangerZone, nextDangerInterval)
     }
+
+    // --- Main Effect Logic ---
+    if (tempIntervalRef.current) window.clearInterval(tempIntervalRef.current)
+    if (dangerZoneIntervalRef.current) clearTimeout(dangerZoneIntervalRef.current)
+    tempIntervalRef.current = null
+    dangerZoneIntervalRef.current = null
+
     if (isLoadMode) {
-      // Live thermometer: random within 10-18 with gentle transitions
+      // Live thermometer: random within 2-8 with gentle transitions
       tempIntervalRef.current = window.setInterval(() => {
         setTempC(prev => {
-          const target = randInRange(10, 18)
+          const target = randInRange(2, 8)
           const delta = target - prev
-          const step = Math.max(Math.min(delta, 0.8), -0.8)
-          const next = Math.max(10, Math.min(18, prev + step))
+          const step = Math.max(Math.min(delta, 0.5), -0.5) // Slower transitions
+          const next = Math.max(2, Math.min(8, prev + step))
           return parseFloat(next.toFixed(1))
         })
-      }, 1000)
+      }, 1500)
+
+      // Start the first danger zone event after a delay
+      const firstDangerInterval = randInRange(12000, 24000)
+      dangerZoneIntervalRef.current = window.setTimeout(enterDangerZone, firstDangerInterval)
+
     } else {
       // Unload: precomputed 10-minute history (one value per 10s => 60 points)
       const points: number[] = []
-      let current = randInRange(10, 18)
+      let current = randInRange(2, 8)
       for (let i = 0; i < 60; i++) {
-        const target = randInRange(10, 18)
+        const target = randInRange(2, 8)
         const delta = target - current
-        const step = Math.max(Math.min(delta, 0.6), -0.6)
-        current = Math.max(10, Math.min(18, current + step))
+        const step = Math.max(Math.min(delta, 0.4), -0.4)
+        current = Math.max(2, Math.min(8, current + step))
         points.push(parseFloat(current.toFixed(1)))
       }
       // Defer state updates to avoid synchronous setState in effect
@@ -98,6 +123,10 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
       if (tempIntervalRef.current) {
         window.clearInterval(tempIntervalRef.current)
         tempIntervalRef.current = null
+      }
+      if (dangerZoneIntervalRef.current) {
+        clearTimeout(dangerZoneIntervalRef.current)
+        dangerZoneIntervalRef.current = null
       }
     }
   }, [isLoadMode])
@@ -554,36 +583,117 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
 }
 
 function ThermoView({ isLoadMode, tempC, history }: { isLoadMode: boolean; tempC: number; history: number[] }) {
+  // Calculates a color from green to red based on temperature deviation from the ideal range.
+  function getTempColor(temp: number): string {
+    const ideal = 5
+    const safeMin = 2, safeMax = 8
+    const dangerMin = 0, dangerMax = 10
+
+    // Clamp temp within the danger zone for color calculation
+    const clampedTemp = Math.max(dangerMin, Math.min(dangerMax, temp))
+
+    let hue: number
+    if (clampedTemp >= safeMin && clampedTemp <= safeMax) {
+      // Inside safe zone (2-8C): Transition from yellow (60) to green (120) and back to yellow.
+      const range = (safeMax - safeMin) / 2
+      const distFromIdeal = Math.abs(clampedTemp - ideal)
+      // 120 (green) at ideal, 60 (yellow) at edges of safe zone
+      hue = 120 - (distFromIdeal / range) * 60
+    } else if (clampedTemp < safeMin) {
+      // Below safe zone (0-2C): Transition from yellow (60) to red (0).
+      const range = safeMin - dangerMin
+      const distFromSafe = safeMin - clampedTemp
+      hue = 60 - (distFromSafe / range) * 60
+    } else { // temp > safeMax
+      // Above safe zone (8-10C): Transition from yellow (60) to red (0).
+      const range = dangerMax - safeMax
+      const distFromSafe = clampedTemp - safeMax
+      hue = 60 - (distFromSafe / range) * 60
+    }
+
+    hue = Math.max(0, Math.min(120, hue))
+    return `hsl(${hue}, 90%, 50%)`
+  }
+
   if (isLoadMode) {
-    const minAxis = -20, maxAxis = 40
+    const minAxis = 0, maxAxis = 10
     const w = 480, h = 120
+    const graphAreaY = 16
+    const graphAreaHeight = h - 32
+
+    // New logic: Calculate the height of the MASK that covers the full bar
     const t = Math.max(0, Math.min(1, (tempC - minAxis) / (maxAxis - minAxis)))
-    const fillHeight = t * (h - 32)
+    const maskHeight = (1 - t) * graphAreaHeight
+
     return (
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-gray-600">Payload Temperature</span>
-          <span className="text-sm font-semibold text-gray-900">{tempC.toFixed(1)}°C</span>
         </div>
-        <div className="bg-gray-100 rounded p-2 overflow-x-auto">
-          <svg width={w} height={h} className="block">
-            <rect x={0} y={0} width={w} height={h} fill="#f3f4f6" rx={8} />
-            {/* Y axis */}
-            <line x1={36} y1={16} x2={36} y2={h - 16} stroke="#888888" strokeWidth={2} />
-            <text x={34} y={24} fill="#6b7280" fontSize="10" textAnchor="end" dx={-6} dy={2}>{maxAxis}°C</text>
-            <text x={34} y={h - 18} fill="#6b7280" fontSize="10" textAnchor="end" dx={-6} dy={2}>{minAxis}°C</text>
-            {/* Fill bar scaled to axis */}
-            <rect x={48} y={h - 16 - fillHeight} width={w - 72} height={fillHeight} fill="#60a5fa" />
-          </svg>
+        <div className="bg-gray-100 rounded p-2 overflow-x-auto relative">
+          {/* The main container for the graph elements */}
+          <div style={{ width: w, height: h }} className="relative block">
+            {/* 1. The full-height colored bar (bottom layer) */}
+            <div 
+              className="absolute"
+              style={{
+                left: 32,
+                right: 16,
+                top: graphAreaY,
+                height: graphAreaHeight,
+                backgroundColor: getTempColor(tempC),
+                borderRadius: '4px',
+                transition: 'background-color 0.5s ease',
+              }}
+            >
+              {/* 3a. The white label, stationary inside the colored bar */}
+              <div className="relative w-full h-full flex items-center justify-center">
+                <span className="text-3xl font-bold text-white">
+                  {tempC.toFixed(1)}°C
+                </span>
+              </div>
+            </div>
+
+            {/* 2. The "mask" that covers the bar from the top (middle layer) */}
+            <div
+              className="absolute overflow-hidden"
+              style={{
+                left: 32,
+                right: 16,
+                top: graphAreaY,
+                height: `${maskHeight}px`,
+                backgroundColor: '#f3f4f6', // Same as SVG background
+                transition: 'height 0.5s ease',
+                borderTopLeftRadius: '4px',
+                borderTopRightRadius: '4px',
+              }}
+            >
+              {/* 3b. The gray label, stationary inside the mask */}
+              <div className="relative w-full h-full flex justify-center">
+                 <span className="absolute text-3xl font-bold text-gray-400" style={{ top: '25px' }}>
+                  {tempC.toFixed(1)}°C
+                </span>
+              </div>
+            </div>
+            
+            {/* 4. SVG for axes and labels (top layer) */}
+            <svg width={w} height={h} className="absolute inset-0 pointer-events-none">
+              {/* Y-Axis Labels */}
+              <text x={24} y={20} textAnchor="end" className="text-xs fill-gray-500">{maxAxis}°C</text>
+              <text x={24} y={h - 16} textAnchor="end" className="text-xs fill-gray-500">{minAxis}°C</text>
+              {/* Axis Lines */}
+              <line x1={32} y1={16} x2={32} y2={h - 16} stroke="#cccccc" strokeWidth={2} />
+            </svg>
+          </div>
         </div>
       </div>
     )
   }
-  // Unload: simple SVG line chart over 8 minutes (48 points, 10s step)
+  // Unload: simple SVG line chart over 10 minutes (60 points, 10s step)
   const width = 468
   const height = 140
   const padding = 32
-  const minAxis = -20, maxAxis = 40
+  const minAxis = 0, maxAxis = 10 // Adjusted for 2-8C range
   const xScale = (i: number) => padding + (i / Math.max(1, history.length - 1)) * (width - padding * 2)
   const yScale = (v: number) => {
     const t = (v - minAxis) / (maxAxis - minAxis)
@@ -599,15 +709,16 @@ function ThermoView({ isLoadMode, tempC, history }: { isLoadMode: boolean; tempC
       <div className="bg-gray-100 rounded p-2 overflow-x-auto">
         <svg width={width} height={height} className="block">
           <rect x={0} y={0} width={width} height={height} fill="#f3f4f6" rx={8} />
-          {/* Axes */}
+          {/* Y-Axis Labels */}
+          <text x={padding - 4} y={padding} textAnchor="end" dominantBaseline="middle" className="text-xs fill-gray-500">{maxAxis}°C</text>
+          <text x={padding - 4} y={height - padding} textAnchor="end" dominantBaseline="middle" className="text-xs fill-gray-500">{minAxis}°C</text>
+          {/* Axis Lines */}
           <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#888888" strokeWidth={2} />
           <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#888888" strokeWidth={2} />
           <path d={pathD} stroke="#3b82f6" strokeWidth={2} fill="none" />
-          {/* Axes labels */}
-          <text x={padding} y={height - padding + 14} fill="#6b7280" fontSize="10" textAnchor="start" dx={8}>0 min</text>
-          <text x={width - padding} y={height - padding + 14} fill="#6b7280" fontSize="10" textAnchor="end" dx={-8}>10 min</text>
-          <text x={padding + 2} y={padding + 10} fill="#6b7280" fontSize="10" textAnchor="end" dx={-8} dy={2}>{maxAxis}°C</text>
-          <text x={padding + 2} y={height - padding} fill="#6b7280" fontSize="10" textAnchor="end" dx={-8} dy={2}>{minAxis}°C</text>
+          {/* X-Axis Labels */}
+          <text x={padding} y={height - padding + 14} textAnchor="middle" className="text-xs fill-gray-500">0 min</text>
+          <text x={width - padding} y={height - padding + 14} textAnchor="middle" className="text-xs fill-gray-500">10 min</text>
         </svg>
       </div>
     </div>
