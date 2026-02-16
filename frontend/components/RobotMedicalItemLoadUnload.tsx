@@ -506,6 +506,8 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
     }
   }
 
+  const totalWeight = useMemo(() => loadedItems.reduce((sum, item) => sum + item.weightGrams, 0), [loadedItems])
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
       {/* Top section: Controls/Video on left, Thermo on right */}
@@ -551,7 +553,7 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
           </div>
         </div>
         {/* Right: Thermometer/Graph */}
-        <ThermoView isLoadMode={isLoadMode} tempC={tempC} history={tempHistory} />
+        <ThermoView isLoadMode={isLoadMode} tempC={tempC} history={tempHistory} totalWeight={totalWeight} />
       </div>
 
       {/* Main content below */}
@@ -583,7 +585,7 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
   )
 }
 
-function ThermoView({ isLoadMode, tempC, history }: { isLoadMode: boolean; tempC: number; history: number[] }) {
+function ThermoView({ isLoadMode, tempC, history, totalWeight }: { isLoadMode: boolean; tempC: number; history: number[]; totalWeight: number }) {
   // Calculates a color from green to red based on temperature deviation from the ideal range.
   function getTempColor(temp: number): string {
     const ideal = 5
@@ -616,21 +618,33 @@ function ThermoView({ isLoadMode, tempC, history }: { isLoadMode: boolean; tempC
     return `hsl(${hue}, 90%, 50%)`
   }
 
+  function getWeightColor(weight: number): string {
+    const maxWeight = 500
+    const t = Math.min(1, weight / maxWeight)
+    const hue = 210 - t * 60 // Blue (210) to purple (150)
+    return `hsl(${hue}, 80%, 60%)`
+  }
+
   if (isLoadMode) {
-    const minAxis = 0, maxAxis = 10
+    const tempMinAxis = 0, tempMaxAxis = 10
+    const weightMinAxis = 0, weightMaxAxis = 500
     const w = 220, h = 120 // Reduced width from 480 to 220
     const graphAreaY = 16
     const graphAreaHeight = h - 32
 
-    // New logic: Calculate the height of the MASK that covers the full bar
-    const t = Math.max(0, Math.min(1, (tempC - minAxis) / (maxAxis - minAxis)))
-    const maskHeight = (1 - t) * graphAreaHeight
+    // Temperature bar logic
+    const tempT = Math.max(0, Math.min(1, (tempC - tempMinAxis) / (tempMaxAxis - tempMinAxis)))
+    const tempMaskHeight = (1 - tempT) * graphAreaHeight
+
+    // Weight bar logic
+    const weightT = Math.max(0, Math.min(1, totalWeight / weightMaxAxis))
+    const weightMaskHeight = (1 - weightT) * graphAreaHeight
 
     return (
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-gray-600">Payload Temperature</span>
-          <span className="text-sm text-gray-600">New Control</span>
+          <span className="text-sm text-gray-600">Total Weight</span>
         </div>
         <div className="bg-gray-100 rounded p-2 flex gap-4">
           {/* Temperature Bar */}
@@ -661,7 +675,7 @@ function ThermoView({ isLoadMode, tempC, history }: { isLoadMode: boolean; tempC
                 left: 32,
                 right: 0, // Adjusted for new width
                 top: graphAreaY,
-                height: `${maskHeight}px`,
+                height: `${tempMaskHeight}px`,
                 backgroundColor: '#f3f4f6', // Same as SVG background
                 transition: 'height 0.5s ease',
                 borderTopLeftRadius: '4px',
@@ -680,21 +694,70 @@ function ThermoView({ isLoadMode, tempC, history }: { isLoadMode: boolean; tempC
             <svg width={w} height={h} className="absolute inset-0 pointer-events-none">
               {/* Y-Axis Labels */}
               <text x={24} y={20} textAnchor="end" className="text-xs fill-gray-500">
-                {maxAxis}°C
+                {tempMaxAxis}°C
               </text>
               <text x={24} y={h - 16} textAnchor="end" className="text-xs fill-gray-500">
-                {minAxis}°C
+                {tempMinAxis}°C
               </text>
               {/* Axis Lines */}
               <line x1={32} y1={16} x2={32} y2={h - 16} stroke="#cccccc" strokeWidth={2} />
             </svg>
           </div>
-          {/* Placeholder for new control */}
-          <div
-            className="bg-gray-300 rounded-md flex-grow flex items-center justify-center"
-            style={{ height: h }}
-          >
-            <span className="text-gray-500 text-sm">Placeholder</span>
+          {/* Weight Bar */}
+          <div className="relative block" style={{ width: w, height: h }}>
+            {/* 1. The full-height colored bar (bottom layer) */}
+            <div
+              className="absolute"
+              style={{
+                left: 0,
+                right: 32,
+                top: graphAreaY,
+                height: graphAreaHeight,
+                backgroundColor: getWeightColor(totalWeight),
+                borderRadius: '4px',
+                transition: 'background-color 0.5s ease',
+              }}
+            >
+              {/* 3a. The white label, stationary inside the colored bar */}
+              <div className="relative w-full h-full flex items-center justify-center">
+                <span className="text-3xl font-bold text-white">{totalWeight.toFixed(0)}g</span>
+              </div>
+            </div>
+
+            {/* 2. The "mask" that covers the bar from the top (middle layer) */}
+            <div
+              className="absolute overflow-hidden"
+              style={{
+                left: 0,
+                right: 32,
+                top: graphAreaY,
+                height: `${weightMaskHeight}px`,
+                backgroundColor: '#f3f4f6', // Same as SVG background
+                transition: 'height 0.5s ease',
+                borderTopLeftRadius: '4px',
+                borderTopRightRadius: '4px',
+              }}
+            >
+              {/* 3b. The gray label, stationary inside the mask */}
+              <div className="relative w-full h-full flex justify-center">
+                <span className="absolute text-3xl font-bold text-gray-400" style={{ top: '25px' }}>
+                  {totalWeight.toFixed(0)}g
+                </span>
+              </div>
+            </div>
+
+            {/* 4. SVG for axes and labels (top layer) */}
+            <svg width={w} height={h} className="absolute inset-0 pointer-events-none">
+              {/* Y-Axis Labels */}
+              <text x={w - 4} y={20} textAnchor="end" className="text-xs fill-gray-500">
+                {weightMaxAxis}g
+              </text>
+              <text x={w - 4} y={h - 16} textAnchor="end" className="text-xs fill-gray-500">
+                {weightMinAxis}g
+              </text>
+              {/* Axis Lines */}
+              <line x1={w - 32} y1={16} x2={w - 32} y2={h - 16} stroke="#cccccc" strokeWidth={2} />
+            </svg>
           </div>
         </div>
       </div>
