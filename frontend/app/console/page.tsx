@@ -13,6 +13,18 @@ export default function ConsolePage() {
   const router = useRouter()
   const { teamSession, logout, activeRobotId, robots } = useAppStore()
   const [isLoadMode, setIsLoadMode] = useState(true)
+  const [isRobotBusy, setIsRobotBusy] = useState(false)
+
+  const handleToggle = () => {
+    if (isRobotBusy) {
+      alert(isLoadMode 
+        ? "Samples are being loaded. Please stop loading first." 
+        : "Samples are being unloaded. Please stop unloading first."
+      )
+      return
+    }
+    setIsLoadMode(prev => !prev)
+  }
 
   // Redirect if not logged in
   useEffect(() => {
@@ -121,8 +133,11 @@ export default function ConsolePage() {
         {/* Medical Item Panels: Full-width below */}
         <div className="mt-6">
           <div className="bg-white shadow-sm rounded-lg p-6">
-            <ConsoleLoadHeader isLoadMode={isLoadMode} onToggle={() => setIsLoadMode(prev => !prev)} />
-            <RobotMedicalItemLoadUnload isLoadMode={isLoadMode} />
+            <ConsoleLoadHeader isLoadMode={isLoadMode} onToggle={handleToggle} />
+            <RobotMedicalItemLoadUnload 
+              isLoadMode={isLoadMode} 
+              onBusyChange={setIsRobotBusy} 
+            />
           </div>
         </div>
       </main>

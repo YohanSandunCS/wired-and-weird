@@ -23,7 +23,13 @@ type MedicalItem = {
 type LogLevel = 'info' | 'warn' | 'error' | 'success'
 type LogEntry = { id: number; ts: number; level: LogLevel; message: string }
 
-export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLoadMode?: boolean }) {
+export default function RobotMedicalItemLoadUnload({ 
+  isLoadMode = true, 
+  onBusyChange 
+}: { 
+  isLoadMode?: boolean; 
+  onBusyChange?: (busy: boolean) => void 
+}) {
   // Memoize to avoid re-processing on re-render
   const allItems: MedicalItem[] = useMemo(() => medicalItems as MedicalItem[], [])
   const [loadedItems, setLoadedItems] = useState<MedicalItem[]>([])
@@ -31,6 +37,12 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
   const [scanError, setScanError] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+
+  // Notify parent of busy state changes
+  useEffect(() => {
+    onBusyChange?.(isLoading)
+  }, [isLoading, onBusyChange])
+
   const [hasStream, setHasStream] = useState(false)
   const streamRef = useRef<MediaStream | null>(null)
   const [logs, setLogs] = useState<LogEntry[]>([])
@@ -54,6 +66,10 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
   const [tempC, setTempC] = useState<number>(14)
   const [tempHistory, setTempHistory] = useState<number[]>([])
   const [weightHistory, setWeightHistory] = useState<number[]>([])
+  // Missing item "toast" state
+  const [missingItemToast, setMissingItemToast] = useState<{ qr: string } | null>(null)
+  const missingToastTimeoutRef = useRef<number | null>(null)
+  
   const tempIntervalRef = useRef<number | null>(null)
   const dangerZoneIntervalRef = useRef<number | null>(null)
 
@@ -194,6 +210,29 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
     if (lastAddedQr === qr) setLastAddedQr(null)
     if (flashQr === qr) setFlashQr(null)
     pushLog('Item removed (qr=' + qr + ')', 'warn')
+  }
+
+  // Helper for showing missing item toast
+  function showMissingItemToast(qr: string) {
+    // If same item already shown, ignore to avoid spam
+    if (missingItemToast?.qr === qr) return
+    
+    // Force a re-render/reset of the toast if we switch items
+    // by momentarily setting to null if needed? 
+    // Actually, React key change on the element is cleaner.
+    
+    setMissingItemToast({ qr })
+    
+    // Clear existing timeout
+    if (missingToastTimeoutRef.current) {
+      clearTimeout(missingToastTimeoutRef.current)
+    }
+    
+    // Auto-hide after 5 seconds
+    missingToastTimeoutRef.current = window.setTimeout(() => {
+      setMissingItemToast(null)
+      missingToastTimeoutRef.current = null
+    }, 5000)
   }
 
   function markDelivered(qr: string, sampleId: string) {
@@ -424,6 +463,7 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
       // Unload mode: only mark delivered if it exists among loaded items
       const exists = loadedItems.some(p => p.qr === match.qr)
       if (!exists) {
+        showMissingItemToast(match.qr)
         pushLog('Cannot deliver (item not onboard): ' + raw, 'warn')
         return
       }
@@ -533,6 +573,7 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
         } else {
           const exists = loadedItems.some(p => p.qr === match.qr)
           if (!exists) {
+            showMissingItemToast(raw)
             pushLog('Cannot deliver (item not onboard): ' + raw, 'warn')
           } else {
             markDelivered(match.qr, match.sampleId)
@@ -618,6 +659,17 @@ export default function RobotMedicalItemLoadUnload({ isLoadMode = true }: { isLo
               </svg>
               {isLoadMode ? 'Stop Loading' : 'Stop Unloading'}
             </button>
+            {/* Missing item toast - auto-hides after 5s */}
+            {missingItemToast && !isLoadMode && (
+              <div 
+                key={missingItemToast.qr}
+                className="w-full px-4 py-2 mt-2 rounded-md text-red-600 bg-white border border-red-200 font-semibold text-sm flex flex-col items-center justify-center animate-flash-red shadow-lg"
+                title="This item was not loaded onto the robot"
+              >
+                <span>Item can&apos;t be found</span>
+                <span className="text-[10px] text-red-500 truncate max-w-full">{missingItemToast.qr.split('|')[0] || missingItemToast.qr}</span>
+              </div>
+            )}
           </div>
         </div>
         {/* Right: Thermometer/Graph */}
