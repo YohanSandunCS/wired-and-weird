@@ -157,10 +157,10 @@ export default function RobotControlPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <button
@@ -207,43 +207,86 @@ export default function RobotControlPage() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Control Panel */}
-          <div className="space-y-6">
-            {/* Control Instructions */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Controls</h2>
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600">
-                  Use your keyboard to control the robot:
-                </p>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↑</kbd>
-                    <span>Forward</span>
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow flex">
+        <div className="flex flex-grow gap-8">
+          {/* Main Content: Live Video Feed */}
+          <div className="w-3/4 flex flex-col space-y-6">
+            <div className="bg-white rounded-lg shadow-sm flex-grow flex flex-col p-0 overflow-hidden">
+              <div className="relative flex-grow">
+                {/* Video Feed */}
+                <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+                  {!isConnected ? (
+                    <div className="text-gray-500 text-center">
+                      <div className="text-gray-400 mb-2 text-2xl">📹</div>
+                      <div className="text-sm">Connect to view live feed</div>
+                    </div>
+                  ) : !latestVisionFrame ? (
+                    <div className="text-gray-500 text-center">
+                      <div className="text-gray-400 mb-2 text-2xl">⏳</div>
+                      <div className="text-sm">Waiting for video stream...</div>
+                    </div>
+                  ) : (
+                    <img
+                      src={`data:${latestVisionFrame.payload.mime};base64,${latestVisionFrame.payload.data}`}
+                      alt="Robot Camera Feed"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error('Failed to load vision frame:', e)
+                      }}
+                    />
+                  )}
+                </div>
+
+                {/* Overlays */}
+                <div className="absolute inset-0 p-6 flex flex-col justify-between">
+                  {/* Top Overlay */}
+                  <div className="flex items-start justify-between">
+                    <h2 className="text-lg font-medium text-white bg-black bg-opacity-50 px-3 py-1 rounded-md">
+                      Live Preview
+                    </h2>
+                    {latestVisionFrame && (
+                      <div className="text-sm text-white bg-black bg-opacity-50 px-3 py-1 rounded-md">
+                        {latestVisionFrame.payload.width}×{latestVisionFrame.payload.height} • 
+                        {latestVisionFrame.payload.quality}% quality
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↓</kbd>
-                    <span>Backward</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">←</kbd>
-                    <span>Turn Left</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→</kbd>
-                    <span>Turn Right</span>
-                  </div>
-                  <div className="flex items-center space-x-2 col-span-2">
-                    <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Space</kbd>
-                    <span>Emergency Stop</span>
-                  </div>
+
+                  {/* Bottom Overlay */}
+                  {latestVisionFrame && (
+                    <div className="flex items-end">
+                      <div className="bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
+                        {new Date(latestVisionFrame.timestamp).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
+              
+              {latestVisionFrame && (
+                <div className="p-6 bg-white border-t border-gray-200">
+                  <div className="text-xs text-gray-500 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Role:</span>
+                      <span className="font-mono">{latestVisionFrame.role}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>MIME:</span>
+                      <span className="font-mono">{latestVisionFrame.payload.mime}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Timestamp:</span>
+                      <span className="font-mono">{new Date(latestVisionFrame.timestamp).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+          </div>
 
-            {/* Visual Control Pad */}
+          {/* Sidebar */}
+          <div className="w-1/4 flex flex-col space-y-6">
+            {/* Input Visualizer */}
             <div className="bg-white rounded-lg p-6 shadow-sm">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Visual Controls</h2>
               <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
@@ -306,164 +349,9 @@ export default function RobotControlPage() {
                 <div></div>
               </div>
             </div>
-          </div>
 
-          {/* Logs and History */}
-          <div className="space-y-6">
-            {/* Live Preview */}
-             <div className="bg-white rounded-lg p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-medium text-gray-900">Live Preview</h2>
-                {latestVisionFrame && (
-                  <div className="text-sm text-gray-500">
-                    {latestVisionFrame.payload.width}×{latestVisionFrame.payload.height} • 
-                    {latestVisionFrame.payload.quality}% quality
-                  </div>
-                )}
-              </div>
-              
-              <div className="bg-gray-100 rounded-md p-3 h-48 flex items-center justify-center">
-                {!isConnected ? (
-                  <div className="text-gray-500 text-center">
-                    <div className="text-gray-400 mb-2 text-2xl">📹</div>
-                    <div className="text-sm">Connect to view live feed</div>
-                  </div>
-                ) : !latestVisionFrame ? (
-                  <div className="text-gray-500 text-center">
-                    <div className="text-gray-400 mb-2 text-2xl">⏳</div>
-                    <div className="text-sm">Waiting for video stream...</div>
-                  </div>
-                ) : (
-                  <div className="relative w-full h-full">
-                    <img
-                      src={`data:${latestVisionFrame.payload.mime};base64,${latestVisionFrame.payload.data}`}
-                      alt="Robot Camera Feed"
-                      className="w-full h-full object-contain rounded"
-                      onError={(e) => {
-                        console.error('Failed to load vision frame:', e)
-                      }}
-                    />
-                    <div className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
-                      {new Date(latestVisionFrame.timestamp).toLocaleTimeString()}
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {latestVisionFrame && (
-                <div className="mt-3 text-xs text-gray-500 space-y-1">
-                  <div className="flex justify-between">
-                    <span>Role:</span>
-                    <span className="font-mono">{latestVisionFrame.role}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>MIME:</span>
-                    <span className="font-mono">{latestVisionFrame.payload.mime}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Timestamp:</span>
-                    <span className="font-mono">{new Date(latestVisionFrame.timestamp).toLocaleString()}</span>
-                  </div>
-                </div>
-              )}
-            </div> 
-
-
-            {/* Live Preview - MJPEG Stream */}
-            {/*
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-medium text-gray-900">Live Preview</h2>
-                <div className="text-sm text-gray-500">
-                  MJPEG Stream
-                </div>
-              </div>
-              
-              <div className="bg-gray-100 rounded-md p-3 h-64 flex items-center justify-center">
-                <div className="relative w-full h-full">
-                  <img
-                    src="http://127.0.0.1:5001/stream"
-                    alt="Robot Camera Feed"
-                    className="w-full h-full object-contain rounded"
-                    style={{ 
-                      maxWidth: '100%', 
-                      maxHeight: '100%',
-                      display: 'block'
-                    }}
-                    onError={(e) => {
-                      console.error('Failed to load MJPEG stream:', e)
-                      setStreamStatus('error')
-                    }}
-                    onLoad={() => {
-                      console.log('MJPEG stream loaded successfully')
-                      setStreamStatus('connected')
-                    }}
-                  />
-                  <div className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
-                    Live Stream • {new Date().toLocaleTimeString()}
-                  </div>
-                  
-                  {streamStatus === 'error' && (
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-center bg-gray-100 rounded">
-                      <div>
-                        <div className="text-gray-400 mb-2 text-2xl">⚠️</div>
-                        <div className="text-sm">Stream not available</div>
-                        <div className="text-xs mt-1 text-gray-400">Check if server is running on port 5001</div>
-                        <button 
-                          onClick={() => {
-                            setStreamStatus('loading')
-                            // Force reload the image
-                            const img = document.querySelector('img[src="http://127.0.0.1:5001/stream"]') as HTMLImageElement
-                            if (img) {
-                              img.src = `http://127.0.0.1:5001/stream?t=${Date.now()}`
-                            }
-                          }}
-                          className="mt-2 px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-                        >
-                          Retry
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {streamStatus === 'loading' && (
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-center bg-gray-100 rounded">
-                      <div>
-                        <div className="text-gray-400 mb-2 text-2xl">⏳</div>
-                        <div className="text-sm">Loading stream...</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="mt-3 text-xs text-gray-500 space-y-1">
-                <div className="flex justify-between">
-                  <span>Source:</span>
-                  <span className="font-mono">http://127.0.0.1:5001/stream</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Format:</span>
-                  <span className="font-mono">MJPEG</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Status:</span>
-                  <span className={`font-mono ${
-                    streamStatus === 'connected' ? 'text-green-600' : 
-                    streamStatus === 'error' ? 'text-red-600' : 
-                    'text-yellow-600'
-                  }`}>
-                    {streamStatus === 'connected' ? 'Connected' : 
-                     streamStatus === 'error' ? 'Error' : 
-                     'Loading...'}
-                  </span>
-                </div>
-              </div>
-              
-            </div> */}
-
-            {/* Connection Logs */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
+            {/* Filtered Logs / Diagnostics */}
+            <div className="bg-white rounded-lg p-6 shadow-sm flex-grow">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Connection Logs</h2>
               <div className="bg-gray-900 text-gray-100 rounded-md p-3 h-64 overflow-y-auto text-xs font-mono">
                 {logs.length === 0 ? (
@@ -491,6 +379,42 @@ export default function RobotControlPage() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-white shadow-sm border-t border-gray-200 p-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-lg">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Controls</h2>
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600">
+                Use your keyboard to control the robot:
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="flex items-center space-x-2">
+                  <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↑</kbd>
+                  <span>Forward</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↓</kbd>
+                  <span>Backward</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">←</kbd>
+                  <span>Turn Left</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→</kbd>
+                  <span>Turn Right</span>
+                </div>
+                <div className="flex items-center space-x-2 col-span-2 md:col-span-4">
+                  <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Space</kbd>
+                  <span>Emergency Stop</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
