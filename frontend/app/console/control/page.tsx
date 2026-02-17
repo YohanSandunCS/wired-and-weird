@@ -265,18 +265,32 @@ export default function RobotControlPage() {
               
               {latestVisionFrame && (
                 <div className="p-6 bg-white border-t border-gray-200">
-                  <div className="text-xs text-gray-500 space-y-1">
+                  <div className="text-xs text-gray-500 space-y-2">
                     <div className="flex justify-between">
-                      <span>Role:</span>
+                      <span>Keyboard key mapping:</span>
                       <span className="font-mono">{latestVisionFrame.role}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>MIME:</span>
-                      <span className="font-mono">{latestVisionFrame.payload.mime}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Timestamp:</span>
-                      <span className="font-mono">{new Date(latestVisionFrame.timestamp).toLocaleString()}</span>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm pt-2">
+                      <div className="flex items-center space-x-2">
+                        <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↑</kbd>
+                        <span className="text-gray-600">Forward</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↓</kbd>
+                        <span className="text-gray-600">Backward</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">←</kbd>
+                        <span className="text-gray-600">Turn Left</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→</kbd>
+                        <span className="text-gray-600">Turn Right</span>
+                      </div>
+                      <div className="flex items-center space-x-2 col-span-2">
+                        <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Space</kbd>
+                        <span className="text-gray-600">Emergency Stop</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -382,37 +396,8 @@ export default function RobotControlPage() {
 
       {/* Footer */}
       <footer className="bg-white shadow-sm border-t border-gray-200 p-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-lg">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Controls</h2>
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600">
-                Use your keyboard to control the robot:
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div className="flex items-center space-x-2">
-                  <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↑</kbd>
-                  <span>Forward</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↓</kbd>
-                  <span>Backward</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">←</kbd>
-                  <span>Turn Left</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→</kbd>
-                  <span>Turn Right</span>
-                </div>
-                <div className="flex items-center space-x-2 col-span-2 md:col-span-4">
-                  <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Space</kbd>
-                  <span>Emergency Stop</span>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="max-w-7xl mx-auto text-center text-sm text-gray-500">
+          MediRunner Robot Control Interface
         </div>
       </footer>
     </div>
