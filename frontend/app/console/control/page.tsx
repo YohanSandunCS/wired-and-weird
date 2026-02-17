@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useAppStore from '@/store/appStore'
 import { useRobotSocket } from '@/hooks/useRobotSocket'
@@ -17,6 +17,8 @@ export default function RobotControlPage() {
   const [pressedKeys, setPressedKeys] = useState(new Set<string>())
   const [commandHistory, setCommandHistory] = useState<Array<{id: string, command: string, timestamp: number}>>([])
   const [streamStatus, setStreamStatus] = useState<'loading' | 'connected' | 'error'>('loading')
+  const logContainerRef = useRef<HTMLDivElement>(null)
+  const isMouseOnScrollbar = useRef(false)
   
   const {
     isConnected,
@@ -92,6 +94,14 @@ export default function RobotControlPage() {
     setCommandHistory(prev => [...prev, historyEntry].slice(-20))
   }, [isConnected, robotId, send])
 
+  // Auto-scroll for logs
+  useEffect(() => {
+    const logContainer = logContainerRef.current
+    if (logContainer && !isMouseOnScrollbar.current) {
+      logContainer.scrollTop = logContainer.scrollHeight
+    }
+  }, [logs])
+
   // Handle keyboard events
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -147,6 +157,29 @@ export default function RobotControlPage() {
       window.removeEventListener('keyup', handleKeyUp)
     }
   }, [pressedKeys, sendMovementCommand, sendStopCommand])
+
+  useEffect(() => {
+    const logContainer = logContainerRef.current
+
+    const handleMouseDown = () => {
+      isMouseOnScrollbar.current = true
+    }
+    const handleMouseUp = () => {
+      isMouseOnScrollbar.current = false
+    }
+
+    if (logContainer) {
+      logContainer.addEventListener('mousedown', handleMouseDown)
+      window.addEventListener('mouseup', handleMouseUp)
+    }
+
+    return () => {
+      if (logContainer) {
+        logContainer.removeEventListener('mousedown', handleMouseDown)
+      }
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [])
 
   if (!teamSession.loggedIn || !robotId || !robot) {
     return (
@@ -367,7 +400,7 @@ export default function RobotControlPage() {
             {/* Filtered Logs / Diagnostics */}
             <div className="bg-white rounded-lg p-6 shadow-sm flex-grow relative">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Connection Logs</h2>
-              <div className="absolute left-0 right-0 bottom-0 bg-gray-900 text-gray-100 p-3 overflow-y-auto text-xs font-mono" style={{top: '4.12rem'}}>
+              <div ref={logContainerRef} className="absolute left-0 right-0 bottom-0 bg-gray-900 text-gray-100 p-3 overflow-y-auto text-xs font-mono" style={{top: '4.12rem'}}>
                 {logs.length === 0 ? (
                   <div className="text-gray-400 italic">No logs yet...</div>
                 ) : (
