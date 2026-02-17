@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react'
 import useAppStore from '@/store/appStore'
 import { useRobotSocket } from '@/hooks/useRobotSocket'
+import RobotMedicalItemLoadUnload from '@/components/RobotMedicalItemLoadUnload'
 
 export default function DebugPage() {
   const { teamSession, robots, activeRobotId, teamRobots } = useAppStore()
   const [wsUrl, setWsUrl] = useState('')
+  const [isLoadMode, setIsLoadMode] = useState(true)
   
   const {
     isConnected,
@@ -26,6 +28,14 @@ export default function DebugPage() {
       <div className="max-w-6xl mx-auto space-y-8">
         <h1 className="text-3xl font-bold text-gray-900">Robot Connection Debug</h1>
         
+        {/* Medical Item Panels (always visible) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <DebugLoadHeader isLoadMode={isLoadMode} onToggle={() => setIsLoadMode(prev => !prev)} />
+            <RobotMedicalItemLoadUnload isLoadMode={isLoadMode} />
+          </div>
+        </div>
+
         {/* Team Session Status */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Team Session</h2>
@@ -158,6 +168,30 @@ export default function DebugPage() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function DebugLoadHeader({ isLoadMode, onToggle }: { isLoadMode: boolean; onToggle: () => void }) {
+  return (
+    <div className="flex items-start justify-between mb-4">
+      <h2 className="text-lg font-medium text-gray-900">
+        {isLoadMode ? 'Load Medical Items' : 'Unload Medical Items'}
+      </h2>
+      <label className="inline-flex items-center gap-2 text-sm select-none" title="Toggle load/unload mode">
+        <span className="text-gray-600">Mode</span>
+        <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isLoadMode ? 'bg-blue-600' : 'bg-gray-300'}`}>
+          <input
+            type="checkbox"
+            checked={isLoadMode}
+            onChange={onToggle}
+            className="absolute w-full h-full opacity-0 cursor-pointer"
+            aria-label="Toggle load/unload mode"
+          />
+          <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isLoadMode ? 'translate-x-6' : 'translate-x-1'}`} />
+        </span>
+        
+      </label>
     </div>
   )
 }

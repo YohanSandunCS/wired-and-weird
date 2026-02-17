@@ -1,16 +1,30 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import useAppStore from '@/store/appStore'
 import RobotEnrollmentForm from '@/components/RobotEnrollmentForm'
 import RobotList from '@/components/RobotList'
 import RobotConnectionPanel from '@/components/RobotConnectionPanel'
 import BatteryStatus from '@/components/BatteryStatus'
+import RobotMedicalItemLoadUnload from '@/components/RobotMedicalItemLoadUnload'
 
 export default function ConsolePage() {
   const router = useRouter()
   const { teamSession, logout, activeRobotId, robots } = useAppStore()
+  const [isLoadMode, setIsLoadMode] = useState(true)
+  const [isRobotBusy, setIsRobotBusy] = useState(false)
+
+  const handleToggle = () => {
+    if (isRobotBusy) {
+      alert(isLoadMode 
+        ? "Samples are being loaded. Please stop loading first." 
+        : "Samples are being unloaded. Please stop unloading first."
+      )
+      return
+    }
+    setIsLoadMode(prev => !prev)
+  }
 
   // Redirect if not logged in
   useEffect(() => {
@@ -88,7 +102,7 @@ export default function ConsolePage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column: Robot Enrollment */}
+          {/* Left Column: Robot Enrollment & List */}
           <div className="space-y-6">
             <div className="bg-white shadow-sm rounded-lg p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">
@@ -106,14 +120,57 @@ export default function ConsolePage() {
           </div>
 
           {/* Right Column: Connection Panel */}
+          <div className="space-y-6">
+            <div className="bg-white shadow-sm rounded-lg p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">
+                Robot Connection
+              </h2>
+              <RobotConnectionPanel />
+            </div>
+          </div>
+        </div>
+
+        {/* Medical Item Panels: Full-width below */}
+        <div className="mt-6">
           <div className="bg-white shadow-sm rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">
-              Robot Connection
-            </h2>
-            <RobotConnectionPanel />
+            <ConsoleLoadHeader isLoadMode={isLoadMode} onToggle={handleToggle} />
+            <RobotMedicalItemLoadUnload 
+              isLoadMode={isLoadMode} 
+              onBusyChange={setIsRobotBusy} 
+            />
           </div>
         </div>
       </main>
+    </div>
+  )
+}
+
+
+function ConsoleLoadHeader({ isLoadMode, onToggle }: { isLoadMode: boolean; onToggle: () => void }) {
+  return (
+    <div className="flex justify-center mb-6">
+      <div className="bg-gray-100 p-1 rounded-lg inline-flex shadow-inner items-center h-[48px]">
+        <button
+          onClick={() => !isLoadMode && onToggle()}
+          className={`px-6 h-full rounded-md font-medium transition-all duration-200 flex items-center ${
+            isLoadMode
+              ? 'bg-white text-gray-900 shadow-sm text-[16px]'
+              : 'text-gray-500 hover:text-gray-700 text-sm'
+          }`}
+        >
+          Load Medical Items
+        </button>
+        <button
+          onClick={() => isLoadMode && onToggle()}
+          className={`px-6 h-full rounded-md font-medium transition-all duration-200 flex items-center ${
+            !isLoadMode
+              ? 'bg-white text-gray-900 shadow-sm text-[16px]'
+              : 'text-gray-500 hover:text-gray-700 text-sm'
+          }`}
+        >
+          Unload Medical Items
+        </button>
+      </div>
     </div>
   )
 }
