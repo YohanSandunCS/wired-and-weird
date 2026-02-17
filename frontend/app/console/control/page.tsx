@@ -182,24 +182,24 @@ export default function RobotControlPage() {
                 lastUpdate={robot.lastTelemetryUpdate}
                 size="sm"
               />
-              <div className={`flex items-center space-x-2 text-sm ${
-                isConnected ? 'text-green-600' : 'text-red-600'
+              <div className={`flex items-center space-x-1 text-xs px-2 py-1 rounded-full border ${
+                isConnected 
+                  ? 'bg-green-50 border-green-200 text-green-700' 
+                  : 'bg-red-50 border-red-200 text-red-700'
               }`}>
-                <div className={`w-2 h-2 rounded-full ${
-                  isConnected ? 'bg-green-500' : 'bg-red-500'
-                }`}></div>
+                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
                 <span className="font-medium">
-                  {isConnected ? 'Connected' : 'Disconnected'}
+                  WebSocket: {isConnected ? 'Connected' : 'Disconnected'}
                 </span>
               </div>
-              <div className={`flex items-center space-x-2 text-sm ${
-                robot.isOnline ? 'text-green-600' : 'text-red-600'
+              <div className={`flex items-center space-x-1 text-xs px-2 py-1 rounded-full border ${
+                robot.isOnline
+                  ? 'bg-green-50 border-green-200 text-green-700'
+                  : 'bg-red-50 border-red-200 text-red-700'
               }`}>
-                <div className={`w-2 h-2 rounded-full ${
-                  robot.isOnline ? 'bg-green-500' : 'bg-red-500'
-                }`}></div>
+                <div className={`w-2 h-2 rounded-full ${robot.isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
                 <span className="font-medium">
-                  {robot.isOnline ? 'Online' : 'Offline'}
+                  Robot: {robot.isOnline ? 'Online' : 'Offline'}
                 </span>
               </div>
             </div>
