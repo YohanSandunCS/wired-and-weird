@@ -398,9 +398,9 @@ export default function RobotControlPage() {
             </div>
 
             {/* Filtered Logs / Diagnostics */}
-            <div className="bg-white rounded-lg p-6 shadow-sm flex-grow relative">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Connection Logs</h2>
-              <div ref={logContainerRef} className="absolute left-0 right-0 bottom-0 bg-gray-900 text-gray-100 p-3 overflow-y-auto text-xs font-mono" style={{top: '4.12rem'}}>
+            <div className="bg-gray-900 rounded-lg p-6 shadow-sm flex-grow relative">
+              <h2 className="text-lg font-medium text-white mb-4">Connection Logs</h2>
+              <div ref={logContainerRef} className="absolute left-6 right-6 bottom-6 bg-gray-900 text-gray-100 rounded-md p-3 overflow-y-auto text-xs font-mono log-scrollbar" style={{top: '4.75rem'}}>
                 {logs.length === 0 ? (
                   <div className="text-gray-400 italic">No logs yet...</div>
                 ) : (

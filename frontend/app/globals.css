@@ -1,21 +1,42 @@
 @import "tailwindcss";
 
-/* Custom scrollbar for logs panel */
-.custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
+/* Custom scrollbar for the logs panel */
+.log-scrollbar::-webkit-scrollbar {
+    width: 12px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+.log-scrollbar::-webkit-scrollbar-track {
+    background: #111827; /* bg-gray-900 */
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(156, 163, 175, 0.5);
-    border-radius: 3px;
+.log-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #d1d5db; /* bg-gray-300 */
+    border-radius: 20px;
+    border: 3px solid #111827; /* bg-gray-900 */
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(156, 163, 175, 0.7);
+.log-scrollbar::-webkit-scrollbar-button {
+    background: #9ca3af; /* bg-gray-400 */
+    height: 8px;
+}
+
+.log-scrollbar::-webkit-scrollbar-button:vertical:start:increment,
+.log-scrollbar::-webkit-scrollbar-button:vertical:end:decrement {
+    display: none;
+}
+
+.log-scrollbar::-webkit-scrollbar-button:vertical:start {
+    border-radius: 4px 4px 0 0;
+}
+
+.log-scrollbar::-webkit-scrollbar-button:vertical:end {
+    border-radius: 0 0 4px 4px;
+}
+
+/* Focus styles for better accessibility */
+.focus-visible:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
 }
 
 /* Animation for status indicators */
@@ -50,10 +71,4 @@
     outline-width: 2px;
     outline-style: solid;
     animation: flash-red 0.5s ease-in-out 3;
-}
-
-/* Focus styles for better accessibility */
-.focus-visible:focus {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
 }
