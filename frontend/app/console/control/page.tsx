@@ -241,11 +241,11 @@ export default function RobotControlPage() {
                 <div className="absolute inset-0 p-6 flex flex-col justify-between">
                   {/* Top Overlay */}
                   <div className="flex items-start justify-between">
-                    <h2 className="text-lg font-medium text-white bg-black bg-opacity-50 px-3 py-1 rounded-md">
+                    <h2 className="text-lg font-medium text-white bg-[#00000061] px-3 py-1 rounded-md">
                       Live Preview
                     </h2>
                     {latestVisionFrame && (
-                      <div className="text-sm text-white bg-black bg-opacity-50 px-3 py-1 rounded-md">
+                      <div className="text-sm text-white bg-[#00000061] px-3 py-1 rounded-md">
                         {latestVisionFrame.payload.width}×{latestVisionFrame.payload.height} • 
                         {latestVisionFrame.payload.quality}% quality
                       </div>
@@ -255,7 +255,7 @@ export default function RobotControlPage() {
                   {/* Bottom Overlay */}
                   {latestVisionFrame && (
                     <div className="flex items-end">
-                      <div className="bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
+                      <div className="bg-[#00000061] text-white text-xs px-2 py-1 rounded">
                         {new Date(latestVisionFrame.timestamp).toLocaleTimeString()}
                       </div>
                     </div>
