@@ -130,8 +130,8 @@ export default function ConsolePage() {
           </div>
         </div>
 
-        {/* Medical Item Panels: Full-width below */}
-        <div className="mt-6">
+        {/* Medical Item Panels: Full-width below. TODO: JUST REMOVE THE DISPLAY_NONE WHEN NECESSARY */}
+        <div className="mt-6" style={{ display : 'none'}}>
           <div className="bg-white shadow-sm rounded-lg p-6">
             <ConsoleLoadHeader isLoadMode={isLoadMode} onToggle={handleToggle} />
             <RobotMedicalItemLoadUnload 
