@@ -6,13 +6,13 @@
 }
 
 .log-scrollbar::-webkit-scrollbar-track {
-    background: #111827; /* bg-gray-900 */
+    background: #4a5565; /* bg-gray-900 */
 }
 
 .log-scrollbar::-webkit-scrollbar-thumb {
     background-color: #d1d5db; /* bg-gray-300 */
     border-radius: 20px;
-    border: 3px solid #111827; /* bg-gray-900 */
+    border: 3px solid #4a5565; /* bg-gray-900 */
 }
 
 .log-scrollbar::-webkit-scrollbar-button {

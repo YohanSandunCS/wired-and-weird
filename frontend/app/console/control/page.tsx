@@ -305,24 +305,24 @@ export default function RobotControlPage() {
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm pt-2">
                       <div className="flex items-center space-x-2">
-                        <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↑</kbd>
-                        <span className="text-gray-600">Forward</span>
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↑</kbd>
+                        <span className="text-gray-800">Forward</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↓</kbd>
-                        <span className="text-gray-600">Backward</span>
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↓</kbd>
+                        <span className="text-gray-800">Backward</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">←</kbd>
-                        <span className="text-gray-600">Turn Left</span>
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">←</kbd>
+                        <span className="text-gray-800">Turn Left</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→</kbd>
-                        <span className="text-gray-600">Turn Right</span>
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→</kbd>
+                        <span className="text-gray-800">Turn Right</span>
                       </div>
                       <div className="flex items-center space-x-2 col-span-2">
-                        <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Space</kbd>
-                        <span className="text-gray-600">Emergency Stop</span>
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Space</kbd>
+                        <span className="text-gray-800">Emergency Stop</span>
                       </div>
                     </div>
                   </div>
@@ -335,72 +335,72 @@ export default function RobotControlPage() {
           <div className="w-1/4 flex flex-col space-y-6">
             {/* Input Visualizer */}
             <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Visual Controls</h2>
+              <h2 className="text-lg font-medium text-gray-900 mb-4">D-Pad</h2>
               <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
                 <div></div>
                 <button
-                  className={`p-4 rounded-lg border-2 transition-colors ${
+                  className={`p-4 rounded-md border-2 transition-colors ${
                     pressedKeys.has('ArrowUp') 
                       ? 'bg-blue-500 text-white border-blue-500' 
-                      : 'bg-gray-50 hover:bg-gray-100 border-gray-300'
+                      : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('forward')}
                   disabled={!isConnected || !robot.isOnline}
                 >
-                  ↑
+                  🡑
                 </button>
                 <div></div>
                 
                 <button
-                  className={`p-4 rounded-lg border-2 transition-colors ${
+                  className={`p-4 rounded-md border-2 transition-colors ${
                     pressedKeys.has('ArrowLeft') 
                       ? 'bg-blue-500 text-white border-blue-500' 
-                      : 'bg-gray-50 hover:bg-gray-100 border-gray-300'
+                      : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('left')}
                   disabled={!isConnected || !robot.isOnline}
                 >
-                  ←
+                  🡐
                 </button>
                 <button
-                  className="p-4 rounded-lg border-2 bg-red-50 hover:bg-red-100 border-red-300 text-red-600"
+                  className="p-4 rounded-md border-2 bg-red-500 text-white text-sm hover:bg-red-600 border-red-500"
                   onClick={sendStopCommand}
                   disabled={!isConnected}
                 >
                   STOP
                 </button>
                 <button
-                  className={`p-4 rounded-lg border-2 transition-colors ${
+                  className={`p-4 rounded-md border-2 transition-colors ${
                     pressedKeys.has('ArrowRight') 
                       ? 'bg-blue-500 text-white border-blue-500' 
-                      : 'bg-gray-50 hover:bg-gray-100 border-gray-300'
+                      : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('right')}
                   disabled={!isConnected || !robot.isOnline}
                 >
-                  →
+                  🡒
                 </button>
                 
                 <div></div>
                 <button
-                  className={`p-4 rounded-lg border-2 transition-colors ${
+                  className={`p-4 rounded-md border-2 transition-colors ${
                     pressedKeys.has('ArrowDown') 
                       ? 'bg-blue-500 text-white border-blue-500' 
-                      : 'bg-gray-50 hover:bg-gray-100 border-gray-300'
+                      : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('backward')}
                   disabled={!isConnected || !robot.isOnline}
                 >
-                  ↓
+                  🡓
                 </button>
                 <div></div>
               </div>
             </div>
 
             {/* Filtered Logs / Diagnostics */}
-            <div className="bg-gray-900 rounded-lg p-6 shadow-sm flex-grow relative">
-              <h2 className="text-lg font-medium text-white mb-4">Connection Logs</h2>
-              <div ref={logContainerRef} className="absolute left-3 right-3 bottom-3 bg-gray-900 text-gray-100 rounded-md p-3 overflow-y-auto text-xs font-mono log-scrollbar" style={{top: '4.75rem'}}>
+            <div className="bg-gray-600 rounded-lg p-6 shadow-sm flex-grow relative">
+              <h2 className="text-lg font-medium text-white mb-4">Control Log</h2>
+              <div ref={logContainerRef} className="absolute left-3 right-3 bottom-3 bg-gray-600 text-gray-100 rounded-md p-3 overflow-y-auto text-xs font-mono log-scrollbar" style={{top: '4.75rem'}}>
                 {logs.length === 0 ? (
                   <div className="text-gray-400 italic">No logs yet...</div>
                 ) : (
