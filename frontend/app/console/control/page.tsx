@@ -207,7 +207,7 @@ export default function RobotControlPage() {
         </div>
       </header>
 
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow flex">
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow flex" style={{ width: '1216px', height: '792px' }}>
         <div className="flex flex-grow gap-8">
           {/* Main Content: Live Video Feed */}
           <div className="w-3/4 flex flex-col space-y-6">
