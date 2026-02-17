@@ -16,21 +16,7 @@
 }
 
 .log-scrollbar::-webkit-scrollbar-button {
-    background: #9ca3af; /* bg-gray-400 */
-    height: 8px;
-}
-
-.log-scrollbar::-webkit-scrollbar-button:vertical:start:increment,
-.log-scrollbar::-webkit-scrollbar-button:vertical:end:decrement {
     display: none;
-}
-
-.log-scrollbar::-webkit-scrollbar-button:vertical:start {
-    border-radius: 4px 4px 0 0;
-}
-
-.log-scrollbar::-webkit-scrollbar-button:vertical:end {
-    border-radius: 0 0 4px 4px;
 }
 
 /* Focus styles for better accessibility */
