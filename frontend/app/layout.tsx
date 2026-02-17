@@ -13,6 +13,9 @@ export const metadata: Metadata = {
   description: "Robotics competition console interface for team coordination and robot management",
 };
 
+// Control ChatAssistant visibility via environment variable
+const SHOW_CHAT_ASSISTANT = process.env.NEXT_PUBLIC_ENABLE_CHAT_ASSISTANT === 'true';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -22,7 +25,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} antialiased`}>
         {children}
-        <ChatAssistant />
+        {SHOW_CHAT_ASSISTANT && <ChatAssistant />}
       </body>
     </html>
   );
