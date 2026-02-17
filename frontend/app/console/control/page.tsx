@@ -182,6 +182,26 @@ export default function RobotControlPage() {
                 lastUpdate={robot.lastTelemetryUpdate}
                 size="sm"
               />
+              <div className={`flex items-center space-x-2 text-sm ${
+                isConnected ? 'text-green-600' : 'text-red-600'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  isConnected ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
+                <span className="font-medium">
+                  {isConnected ? 'Connected' : 'Disconnected'}
+                </span>
+              </div>
+              <div className={`flex items-center space-x-2 text-sm ${
+                robot.isOnline ? 'text-green-600' : 'text-red-600'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${
+                  robot.isOnline ? 'bg-green-500' : 'bg-red-500'
+                }`}></div>
+                <span className="font-medium">
+                  {robot.isOnline ? 'Online' : 'Offline'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -191,33 +211,6 @@ export default function RobotControlPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Control Panel */}
           <div className="space-y-6">
-            {/* Connection Status */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Connection Status</h2>
-              <div className="space-y-2">
-                <div className={`flex items-center space-x-2 ${
-                  isConnected ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  <div className={`w-3 h-3 rounded-full ${
-                    isConnected ? 'bg-green-500' : 'bg-red-500'
-                  }`}></div>
-                  <span className="font-medium">
-                    WebSocket: {isConnected ? 'Connected' : 'Disconnected'}
-                  </span>
-                </div>
-                <div className={`flex items-center space-x-2 ${
-                  robot.isOnline ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  <div className={`w-3 h-3 rounded-full ${
-                    robot.isOnline ? 'bg-green-500' : 'bg-red-500'
-                  }`}></div>
-                  <span className="font-medium">
-                    Robot: {robot.isOnline ? 'Online' : 'Offline'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
             {/* Control Instructions */}
             <div className="bg-white rounded-lg p-6 shadow-sm">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Controls</h2>
