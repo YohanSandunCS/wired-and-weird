@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import useAppStore from "@/store/appStore";
 import { useRobotSocket } from "@/hooks/useRobotSocket";
 import BatteryStatus from "@/components/BatteryStatus";
+import PanoramicViewer from "@/components/PanoramicViewer";
 
 export default function RobotControlPage() {
   const router = useRouter();
@@ -21,11 +22,23 @@ export default function RobotControlPage() {
   const [streamStatus, setStreamStatus] = useState<
     "loading" | "connected" | "error"
   >("loading");
+  const [showPanoramicModal, setShowPanoramicModal] = useState(false);
+  const [isPanoramicCapturing, setIsPanoramicCapturing] = useState(false);
+  const [currentMode, setCurrentMode] = useState<"manual" | "auto">("manual");
+  const [manualCommandSent, setManualCommandSent] = useState(false);
   const logContainerRef = useRef<HTMLDivElement>(null);
   const isMouseOnScrollbar = useRef(false);
 
-  const { isConnected, logs, latestVisionFrame, connect, disconnect, send } =
-    useRobotSocket(robotId);
+  const {
+    isConnected,
+    logs,
+    latestVisionFrame,
+    latestPanoramicImage,
+    connect,
+    disconnect,
+    send,
+    clearPanoramicImage,
+  } = useRobotSocket(robotId);
 
   // Redirect if not authenticated or not logged in or no robot
   useEffect(() => {
@@ -49,6 +62,25 @@ export default function RobotControlPage() {
       connect();
     }
   }, [robotId, isConnected, connect]);
+
+  // Send manual mode command once connected
+  useEffect(() => {
+    if (isConnected && robotId && !manualCommandSent) {
+      const command = {
+        type: "command",
+        robotId,
+        payload: {
+          action: "manual",
+        },
+        timestamp: Date.now(),
+      };
+
+      send(command);
+      setManualCommandSent(true);
+
+      console.log("Sent manual mode command:", command);
+    }
+  }, [isConnected, robotId, send, manualCommandSent]);
 
   const sendMovementCommand = useCallback(
     (direction: string) => {
@@ -99,6 +131,63 @@ export default function RobotControlPage() {
     setCommandHistory((prev) => [...prev, historyEntry].slice(-20));
   }, [isConnected, robotId, send]);
 
+  const capturePanoramicImage = useCallback(() => {
+    if (!isConnected || !robotId) return;
+
+    setIsPanoramicCapturing(true);
+
+    const command = {
+      type: "command",
+      robotId,
+      payload: {
+        action: "panoramic",
+      },
+      timestamp: Date.now(),
+    };
+
+    send(command);
+
+    const historyEntry = {
+      id: Date.now().toString(),
+      command: "Capture Panoramic Image",
+      timestamp: Date.now(),
+    };
+    setCommandHistory((prev) => [...prev, historyEntry].slice(-20));
+  }, [isConnected, robotId, send]);
+
+  const toggleMode = useCallback(() => {
+    if (!isConnected || !robotId) return;
+
+    const newMode = currentMode === "manual" ? "auto" : "manual";
+
+    const command = {
+      type: "command",
+      robotId,
+      payload: {
+        action: newMode === "auto" ? "auto" : "manual",
+      },
+      timestamp: Date.now(),
+    };
+
+    send(command);
+    setCurrentMode(newMode);
+
+    const historyEntry = {
+      id: Date.now().toString(),
+      command: `Switch to ${newMode === "auto" ? "Autonomous" : "Manual"} Mode`,
+      timestamp: Date.now(),
+    };
+    setCommandHistory((prev) => [...prev, historyEntry].slice(-20));
+  }, [isConnected, robotId, send, currentMode]);
+
+  // Handle panoramic image response
+  useEffect(() => {
+    if (latestPanoramicImage) {
+      setIsPanoramicCapturing(false);
+      setShowPanoramicModal(true);
+    }
+  }, [latestPanoramicImage]);
+
   // Auto-scroll for logs
   useEffect(() => {
     const logContainer = logContainerRef.current;
@@ -110,6 +199,9 @@ export default function RobotControlPage() {
   // Handle keyboard events
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't handle keyboard in auto mode
+      if (currentMode === "auto") return;
+
       // Prevent default behavior for arrow keys
       if (
         ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(
@@ -145,6 +237,9 @@ export default function RobotControlPage() {
     };
 
     const handleKeyUp = (event: KeyboardEvent) => {
+      // Don't handle keyboard in auto mode
+      if (currentMode === "auto") return;
+
       const newPressedKeys = new Set(pressedKeys);
       newPressedKeys.delete(event.code);
       setPressedKeys(newPressedKeys);
@@ -167,7 +262,7 @@ export default function RobotControlPage() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [pressedKeys, sendMovementCommand, sendStopCommand]);
+  }, [pressedKeys, sendMovementCommand, sendStopCommand, currentMode]);
 
   useEffect(() => {
     const logContainer = logContainerRef.current;
@@ -245,6 +340,19 @@ export default function RobotControlPage() {
                   Medi Runner — Live Control Interface
                 </p>
               </div>
+              <div className="w-px h-8 bg-cyan-500/25" />
+              {/* Mode Toggle */}
+              <button
+                onClick={toggleMode}
+                disabled={!isConnected}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  currentMode === "manual"
+                    ? "bg-cyan-500/15 border-cyan-400/50 text-cyan-300 hover:bg-cyan-500/25"
+                    : "bg-purple-500/15 border-purple-400/50 text-purple-300 hover:bg-purple-500/25"
+                }`}
+              >
+                {currentMode === "manual" ? "🎮 Manual" : "🤖 Auto"}
+              </button>
             </div>
 
             {/* Right: status pills + robot info + battery */}
@@ -293,6 +401,7 @@ export default function RobotControlPage() {
       </header>
 
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        {/* Row 1: Video | D-Pad */}
         <div className="flex gap-8 items-start">
           {/* Main Content: Live Video Feed */}
           <div className="w-3/5 flex flex-col space-y-6">
@@ -361,6 +470,13 @@ export default function RobotControlPage() {
           {/* D-Pad */}
           <div className="w-2/5">
             <div className="glass-card p-6 flex flex-col items-center">
+              {currentMode === "auto" && (
+                <div className="w-full mb-3 text-center">
+                  <span className="text-xs px-3 py-1 rounded-full bg-yellow-500/15 border border-yellow-400/30 text-yellow-300 font-medium">
+                    Controls Disabled (Auto Mode)
+                  </span>
+                </div>
+              )}
               {/* Fixed-size square D-Pad */}
               <div
                 className="relative"
@@ -369,7 +485,9 @@ export default function RobotControlPage() {
                 {/* Up */}
                 <button
                   onClick={() => sendMovementCommand("forward")}
-                  disabled={!isConnected || !robot.isOnline}
+                  disabled={
+                    !isConnected || !robot.isOnline || currentMode === "auto"
+                  }
                   className={`absolute left-1/2 top-0 -translate-x-1/2 flex items-center justify-center rounded-2xl transition-all duration-150 disabled:opacity-40 ${
                     pressedKeys.has("ArrowUp")
                       ? "bg-cyan-400/25 text-cyan-100"
@@ -397,11 +515,12 @@ export default function RobotControlPage() {
                     <polyline points="18 15 12 9 6 15" />
                   </svg>
                 </button>
-
                 {/* Left */}
                 <button
                   onClick={() => sendMovementCommand("left")}
-                  disabled={!isConnected || !robot.isOnline}
+                  disabled={
+                    !isConnected || !robot.isOnline || currentMode === "auto"
+                  }
                   className={`absolute top-1/2 left-0 -translate-y-1/2 flex items-center justify-center rounded-2xl transition-all duration-150 disabled:opacity-40 ${
                     pressedKeys.has("ArrowLeft")
                       ? "bg-cyan-400/25 text-cyan-100"
@@ -429,11 +548,10 @@ export default function RobotControlPage() {
                     <polyline points="15 18 9 12 15 6" />
                   </svg>
                 </button>
-
                 {/* Center STOP */}
                 <button
                   onClick={sendStopCommand}
-                  disabled={!isConnected}
+                  disabled={!isConnected || currentMode === "auto"}
                   className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center rounded-full text-white font-black tracking-widest transition-all duration-150 disabled:opacity-40 hover:bg-red-500/90"
                   style={{
                     width: "140px",
@@ -447,11 +565,12 @@ export default function RobotControlPage() {
                 >
                   STOP
                 </button>
-
                 {/* Right */}
                 <button
                   onClick={() => sendMovementCommand("right")}
-                  disabled={!isConnected || !robot.isOnline}
+                  disabled={
+                    !isConnected || !robot.isOnline || currentMode === "auto"
+                  }
                   className={`absolute top-1/2 right-0 -translate-y-1/2 flex items-center justify-center rounded-2xl transition-all duration-150 disabled:opacity-40 ${
                     pressedKeys.has("ArrowRight")
                       ? "bg-cyan-400/25 text-cyan-100"
@@ -479,11 +598,12 @@ export default function RobotControlPage() {
                     <polyline points="9 18 15 12 9 6" />
                   </svg>
                 </button>
-
                 {/* Down */}
                 <button
                   onClick={() => sendMovementCommand("backward")}
-                  disabled={!isConnected || !robot.isOnline}
+                  disabled={
+                    !isConnected || !robot.isOnline || currentMode === "auto"
+                  }
                   className={`absolute left-1/2 bottom-0 -translate-x-1/2 flex items-center justify-center rounded-2xl transition-all duration-150 disabled:opacity-40 ${
                     pressedKeys.has("ArrowDown")
                       ? "bg-cyan-400/25 text-cyan-100"
@@ -510,6 +630,18 @@ export default function RobotControlPage() {
                   >
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
+                </button>
+              </div>
+              {/* Panoramic Capture Button */}
+              <div className="mt-6 w-full max-w-xs">
+                <button
+                  onClick={capturePanoramicImage}
+                  disabled={!isConnected || isPanoramicCapturing}
+                  className="w-full p-3 rounded-xl border border-purple-400/50 bg-purple-500/15 text-purple-300 font-medium hover:bg-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isPanoramicCapturing
+                    ? "📸 Capturing..."
+                    : "📸 360° Panoramic"}
                 </button>
               </div>
             </div>
@@ -556,45 +688,80 @@ export default function RobotControlPage() {
               </div>
             </div>
           </div>
-
           {/* Keyboard Mapping */}
           <div className="w-2/5">
             <div className="glass-card p-6">
               <h2 className="text-base font-semibold text-white mb-4 glow-heading">
                 Keyboard Mapping
               </h2>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-5 text-base">
-                <div className="flex items-center space-x-3">
-                  <kbd className="px-4 py-2 text-base font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg min-w-[2.5rem] text-center">
-                    ↑
-                  </kbd>
-                  <span className="text-gray-300">Forward</span>
+              {currentMode === "auto" ? (
+                <div className="text-center py-4 text-yellow-300/70 text-sm">
+                  Keyboard disabled in Auto Mode
                 </div>
-                <div className="flex items-center space-x-3">
-                  <kbd className="px-4 py-2 text-base font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg min-w-[2.5rem] text-center">
-                    ↓
-                  </kbd>
-                  <span className="text-gray-300">Backward</span>
+              ) : (
+                <div className="grid grid-cols-2 gap-x-6 gap-y-5 text-base">
+                  <div className="flex items-center space-x-3">
+                    <kbd
+                      className={`px-4 py-2 text-base font-bold rounded-lg min-w-[2.5rem] text-center border transition-colors ${
+                        pressedKeys.has("ArrowUp")
+                          ? "bg-cyan-500 text-white border-cyan-600"
+                          : "text-cyan-300 bg-cyan-500/10 border-cyan-500/20"
+                      }`}
+                    >
+                      ↑
+                    </kbd>
+                    <span className="text-gray-300">Forward</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <kbd
+                      className={`px-4 py-2 text-base font-bold rounded-lg min-w-[2.5rem] text-center border transition-colors ${
+                        pressedKeys.has("ArrowDown")
+                          ? "bg-cyan-500 text-white border-cyan-600"
+                          : "text-cyan-300 bg-cyan-500/10 border-cyan-500/20"
+                      }`}
+                    >
+                      ↓
+                    </kbd>
+                    <span className="text-gray-300">Backward</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <kbd
+                      className={`px-4 py-2 text-base font-bold rounded-lg min-w-[2.5rem] text-center border transition-colors ${
+                        pressedKeys.has("ArrowLeft")
+                          ? "bg-cyan-500 text-white border-cyan-600"
+                          : "text-cyan-300 bg-cyan-500/10 border-cyan-500/20"
+                      }`}
+                    >
+                      ←
+                    </kbd>
+                    <span className="text-gray-300">Turn Left</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <kbd
+                      className={`px-4 py-2 text-base font-bold rounded-lg min-w-[2.5rem] text-center border transition-colors ${
+                        pressedKeys.has("ArrowRight")
+                          ? "bg-cyan-500 text-white border-cyan-600"
+                          : "text-cyan-300 bg-cyan-500/10 border-cyan-500/20"
+                      }`}
+                    >
+                      →
+                    </kbd>
+                    <span className="text-gray-300">Turn Right</span>
+                  </div>
+                  <div className="flex items-center space-x-3 col-span-2">
+                    <kbd
+                      className={`px-4 py-2 text-base font-bold rounded-lg border transition-colors ${
+                        pressedKeys.has("Space")
+                          ? "bg-red-500 text-white border-red-600"
+                          : "text-cyan-300 bg-cyan-500/10 border-cyan-500/20"
+                      }`}
+                    >
+                      Space
+                    </kbd>
+                    <span className="text-gray-300">Emergency Stop</span>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <kbd className="px-4 py-2 text-base font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg min-w-[2.5rem] text-center">
-                    ←
-                  </kbd>
-                  <span className="text-gray-300">Turn Left</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <kbd className="px-4 py-2 text-base font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg min-w-[2.5rem] text-center">
-                    →
-                  </kbd>
-                  <span className="text-gray-300">Turn Right</span>
-                </div>
-                <div className="flex items-center space-x-3 col-span-2">
-                  <kbd className="px-4 py-2 text-base font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
-                    Space
-                  </kbd>
-                  <span className="text-gray-300">Emergency Stop</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -609,6 +776,20 @@ export default function RobotControlPage() {
           MediRunner Robot Control Interface
         </div>
       </footer>
+
+      {/* Panoramic Image Viewer */}
+      {showPanoramicModal && latestPanoramicImage && (
+        <PanoramicViewer
+          imageUrl={`data:${latestPanoramicImage.payload.mime};base64,${latestPanoramicImage.payload.data}`}
+          onClose={() => {
+            setShowPanoramicModal(false);
+            clearPanoramicImage();
+          }}
+          captureTime={latestPanoramicImage.payload.captureTime}
+          width={latestPanoramicImage.payload.width}
+          height={latestPanoramicImage.payload.height}
+        />
+      )}
     </div>
   );
 }

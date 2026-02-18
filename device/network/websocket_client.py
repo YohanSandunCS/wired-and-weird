@@ -17,7 +17,8 @@ class WebSocketClient:
         Args:
             message_handler: Async callback function for handling received messages
         """
-        self.url = Config.GATEWAY_URL
+        # Build URL with robotId query parameter
+        self.base_url = Config.GATEWAY_URL.format(robot_id=Config.ROBOT_ID)
         self.websocket = None
         self.connected = False
         self.message_handler = message_handler
@@ -25,22 +26,19 @@ class WebSocketClient:
         self.max_reconnect_delay = 60  # max backoff
         
         if Config.DEBUG:
-            print(f"[WebSocketClient] Initialized for {self.url}")
+            print(f"[WebSocketClient] Initialized for {self.base_url}")
     
     async def connect(self):
         """Establish WebSocket connection to gateway"""
         try:
             if Config.DEBUG:
-                print(f"[WebSocketClient] Connecting to {self.url}...")
+                print(f"[WebSocketClient] Connecting to {self.base_url}...")
             
-            self.websocket = await websockets.connect(self.url)
+            self.websocket = await websockets.connect(self.base_url)
             self.connected = True
             
             if Config.DEBUG:
                 print("[WebSocketClient] Connected successfully")
-            
-            # Send registration message
-            await self.register()
             
             return True
         except Exception as e:
@@ -49,24 +47,11 @@ class WebSocketClient:
             self.connected = False
             return False
     
-    async def register(self):
-        """Send registration message to gateway"""
-        registration_msg = {
-            'type': 'registration',
-            'robot_id': Config.ROBOT_ID,
-            'robot_name': Config.ROBOT_NAME,
-            'timestamp': datetime.now().isoformat()
-        }
-        await self.send_message(registration_msg)
-        
-        if Config.DEBUG:
-            print(f"[WebSocketClient] Registered as {Config.ROBOT_ID}")
-    
-    async def send_message(self, message):
+    async def send_message(self, message_dict):
         """
-        Send message to gateway
+        Send message to gateway in MessageEnvelope format
         Args:
-            message: Dict to be serialized as JSON
+            message_dict: Dict with 'type' and optionally 'payload'
         """
         if not self.connected or not self.websocket:
             if Config.DEBUG:
@@ -74,7 +59,15 @@ class WebSocketClient:
             return False
         
         try:
-            json_message = json.dumps(message)
+            # Build message in gateway's expected format
+            envelope = {
+                'type': message_dict.get('type', 'unknown'),
+                'robotId': Config.ROBOT_ID,
+                'payload': message_dict.get('payload', {}),
+                'timestamp': int(datetime.now().timestamp() * 1000)  # milliseconds
+            }
+            
+            json_message = json.dumps(envelope)
             await self.websocket.send(json_message)
             return True
         except Exception as e:
@@ -91,8 +84,6 @@ class WebSocketClient:
         """
         message = {
             'type': 'telemetry',
-            'robot_id': Config.ROBOT_ID,
-            'timestamp': datetime.now().isoformat(),
             'payload': telemetry_data
         }
         await self.send_message(message)
@@ -105,11 +96,11 @@ class WebSocketClient:
             encoding: 'base64' or 'binary'
         """
         message = {
-            'type': 'video_frame',
-            'robot_id': Config.ROBOT_ID,
-            'timestamp': datetime.now().isoformat(),
-            'encoding': encoding,
-            'payload': frame_data
+            'type': 'vision_frame',
+            'payload': {
+                'encoding': encoding,
+                'data': frame_data
+            }
         }
         await self.send_message(message)
     
@@ -118,9 +109,13 @@ class WebSocketClient:
         try:
             async for message in self.websocket:
                 try:
+                    # Debug: print raw message
+                    if Config.DEBUG:
+                        print(f"[WebSocketClient] RAW: {message[:200]}{'...' if len(message) > 200 else ''}")
+                    
                     data = json.loads(message)
                     if Config.DEBUG:
-                        print(f"[WebSocketClient] Received: {data.get('type', 'unknown')}")
+                        print(f"[WebSocketClient] Received type: {data.get('type', 'unknown')}")
                     
                     # Call message handler if provided
                     if self.message_handler:

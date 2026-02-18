@@ -163,6 +163,31 @@ class MotorController:
         if Config.DEBUG:
             print(f"[MotorController] Differential right: L={left_speed}, R={right_speed}")
     
+    def set_motor_speeds(self, left_speed, right_speed):
+        """
+        Set individual motor speeds for smooth differential steering
+        Both motors move forward at different speeds for smooth turns
+        
+        Args:
+            left_speed: Speed for left motor (0-100)
+            right_speed: Speed for right motor (0-100)
+        """
+        # Clamp speeds
+        left_speed = max(0, min(100, left_speed))
+        right_speed = max(0, min(100, right_speed))
+        
+        # Both motors forward, just at different speeds
+        GPIO.output(Config.MOTOR_LEFT_FORWARD, GPIO.LOW)
+        GPIO.output(Config.MOTOR_LEFT_BACKWARD, GPIO.HIGH)
+        GPIO.output(Config.MOTOR_RIGHT_FORWARD, GPIO.LOW)
+        GPIO.output(Config.MOTOR_RIGHT_BACKWARD, GPIO.HIGH)
+        
+        self.left_pwm.ChangeDutyCycle(left_speed)
+        self.right_pwm.ChangeDutyCycle(right_speed)
+        
+        if Config.DEBUG:
+            print(f"[MotorController] Differential forward: L={left_speed:.1f}, R={right_speed:.1f}")
+    
     def set_speed(self, speed):
         """Set default motor speed (0-100)"""
         self.current_speed = max(0, min(100, speed))

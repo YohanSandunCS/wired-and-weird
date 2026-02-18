@@ -1,17 +1,27 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import useAppStore from "@/store/appStore";
 import { useRobotSocket } from "@/hooks/useRobotSocket";
 import BatteryStatus from "./BatteryStatus";
 
 export default function RobotConnectionPanel() {
   const router = useRouter();
-  const { activeRobotId, robots } = useAppStore();
+  const pathname = usePathname();
+  const { activeRobotId, robots, wsConnected } = useAppStore();
   const activeRobot = robots.find((robot) => robot.robotId === activeRobotId);
 
-  const { isConnected, logs, connect, disconnect, ping, clearLogs } =
-    useRobotSocket(activeRobotId);
+  const {
+    isConnected: localIsConnected,
+    logs,
+    connect,
+    disconnect,
+    ping,
+    clearLogs,
+  } = useRobotSocket(activeRobotId);
+
+  // Use global wsConnected state as source of truth
+  const isConnected = wsConnected || localIsConnected;
 
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:5000/ws";
 
@@ -53,7 +63,7 @@ export default function RobotConnectionPanel() {
             </span>
           </div>
           <div className="flex items-center">
-            <span className="font-medium text-gray-300">Battery:</span>
+            <span className="font-medium">Battery:</span>
             <div className="ml-2">
               <BatteryStatus
                 battery={activeRobot.battery}
@@ -93,16 +103,39 @@ export default function RobotConnectionPanel() {
           </button>
         </div>
 
-        {/* Control Robot Button */}
-        {isConnected && activeRobot?.isOnline && (
-          <button
-            onClick={() =>
-              router.push(`/console/control?robotId=${activeRobotId}`)
-            }
-            className="w-full neon-btn"
-          >
-            🎮 Control Robot
-          </button>
+        {/* Mode Toggle */}
+        {isConnected && (
+          <div className="glass-card-light rounded-xl p-3">
+            <div className="text-xs text-cyan-400/70 mb-2 text-center font-medium tracking-widest uppercase">
+              Select Mode
+            </div>
+            <div className="flex rounded-xl overflow-hidden border border-cyan-500/20">
+              <button
+                onClick={() =>
+                  router.push(`/console/control?robotId=${activeRobotId}`)
+                }
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  pathname?.includes("/console/control")
+                    ? "bg-cyan-500/20 text-cyan-300 border-r border-cyan-500/20"
+                    : "bg-transparent text-gray-400 hover:bg-cyan-500/10 hover:text-cyan-300 border-r border-cyan-500/20"
+                }`}
+              >
+                🎮 Manual
+              </button>
+              <button
+                onClick={() =>
+                  router.push(`/console/auto?robotId=${activeRobotId}`)
+                }
+                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                  pathname?.includes("/console/auto")
+                    ? "bg-purple-500/20 text-purple-300"
+                    : "bg-transparent text-gray-400 hover:bg-purple-500/10 hover:text-purple-300"
+                }`}
+              >
+                🤖 Auto
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Connection Status Indicators */}
@@ -163,12 +196,12 @@ export default function RobotConnectionPanel() {
 
         <div className="bg-[#0a0e24] text-gray-100 rounded-xl p-3 h-64 overflow-y-auto text-xs font-mono border border-cyan-500/10">
           {logs.length === 0 ? (
-            <div className="text-gray-500 italic">No logs yet...</div>
+            <div className="text-gray-400 italic">No logs yet...</div>
           ) : (
             <div className="space-y-1">
               {logs.map((log) => (
                 <div key={log.id} className="flex">
-                  <span className="text-gray-500 w-20 flex-shrink-0">
+                  <span className="text-gray-400 w-20 flex-shrink-0">
                     {new Date(log.timestamp).toLocaleTimeString()}
                   </span>
                   <span

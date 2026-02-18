@@ -1,30 +1,49 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { PingMessage, PongMessage, LogEntry, TelemetryMessage, VisionFrameMessage } from '@/types/messages'
+import { PingMessage, PongMessage, LogEntry, TelemetryMessage, VisionFrameMessage, PanoramicImageMessage } from '@/types/messages'
 import useAppStore from '@/store/appStore'
+
+// Singleton WebSocket manager to persist across page navigation
+let globalSocket: WebSocket | null = null
+let globalRobotId: string | null = null
 
 interface UseRobotSocketReturn {
   isConnected: boolean
   logs: LogEntry[]
   lastMessage: any
   latestVisionFrame: VisionFrameMessage | null
+  latestPanoramicImage: PanoramicImageMessage | null
   connect: () => void
   disconnect: () => void
   send: (data: any) => void
   ping: () => void
   clearLogs: () => void
+  clearPanoramicImage: () => void
 }
 
 export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => {
-  const socketRef = useRef<WebSocket | null>(null)
+  const socketRef = useRef<WebSocket | null>(globalSocket)
   const [isConnected, setIsConnected] = useState(false)
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [lastMessage, setLastMessage] = useState<any>(null)
   const [latestVisionFrame, setLatestVisionFrame] = useState<VisionFrameMessage | null>(null)
+  const [latestPanoramicImage, setLatestPanoramicImage] = useState<PanoramicImageMessage | null>(null)
   const pendingPingsRef = useRef<Map<number, number>>(new Map())
   
-  const { updateRobotStatus, updateRobotBattery } = useAppStore()
+  const { updateRobotStatus, updateRobotBattery, setWsConnected } = useAppStore()
+
+  // Store state setters in refs so they can be accessed from the global message handler
+  const setLatestVisionFrameRef = useRef(setLatestVisionFrame)
+  const setLatestPanoramicImageRef = useRef(setLatestPanoramicImage)
+  const setLastMessageRef = useRef(setLastMessage)
+  const addLogRef = useRef<(message: string, type?: LogEntry['type']) => void>(() => {})
+
+  useEffect(() => {
+    setLatestVisionFrameRef.current = setLatestVisionFrame
+    setLatestPanoramicImageRef.current = setLatestPanoramicImage
+    setLastMessageRef.current = setLastMessage
+  })
 
   const addLog = useCallback((message: string, type: LogEntry['type'] = 'info') => {
     const logEntry: LogEntry = {
@@ -36,15 +55,82 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
     setLogs(prev => [...prev, logEntry].slice(-50)) // Keep only last 50 logs
   }, [])
 
+  useEffect(() => {
+    addLogRef.current = addLog
+  }, [addLog])
+
+  // Setup message handler for global socket
+  useEffect(() => {
+    if (!globalSocket || !robotId) return
+
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data)
+        setLastMessageRef.current(data)
+        
+        if (data.type === 'pong' && data.robotId === robotId) {
+          // Robot is online - it responded to ping
+          updateRobotStatus(robotId, true)
+          const sentTime = pendingPingsRef.current.get(data.timestamp)
+          if (sentTime) {
+            const roundTripTime = Date.now() - sentTime
+            addLogRef.current?.(`Ping: ${roundTripTime}ms`, 'success')
+            pendingPingsRef.current.delete(data.timestamp)
+          } else {
+            addLogRef.current?.('Received pong response', 'info')
+          }
+        } else if (data.type === 'telemetry' && data.robotId === robotId) {
+          // Handle telemetry data - robot is online
+          updateRobotStatus(robotId, true)
+          if (data.payload?.battery !== undefined) {
+            updateRobotBattery(robotId, data.payload.battery)
+            addLogRef.current?.(`Battery: ${data.payload.battery}%`, 'info')
+          }
+        } else if (data.type === 'vision_frame' && data.robotId === robotId) {
+          // Handle vision frame - robot is online (no logging to reduce spam)
+          updateRobotStatus(robotId, true)
+          setLatestVisionFrameRef.current(data)
+        } else if (data.type === 'panoramic_image' && data.robotId === robotId) {
+          // Handle panoramic image
+          setLatestPanoramicImageRef.current(data)
+          addLogRef.current?.('Panoramic image received', 'success')
+        } else if (data.type === 'error' && data.robotId === robotId) {
+          // Robot is offline - error response received
+          updateRobotStatus(robotId, false)
+          addLogRef.current?.(`Robot error: ${data.payload?.message || 'Unknown error'}`, 'error')
+        } else {
+          addLogRef.current?.(`Received: ${JSON.stringify(data)}`, 'info')
+        }
+      } catch (error) {
+        addLogRef.current?.(`Received: ${event.data}`, 'info')
+      }
+    }
+
+    globalSocket.addEventListener('message', handleMessage)
+    
+    return () => {
+      globalSocket?.removeEventListener('message', handleMessage)
+    }
+  }, [robotId, updateRobotStatus, updateRobotBattery])
+
   const connect = useCallback(() => {
     if (!robotId) {
       addLog('No robot selected', 'error')
       return
     }
 
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      addLog('Already connected', 'info')
+    // If already connected to the same robot, reuse the connection
+    if (globalSocket?.readyState === WebSocket.OPEN && globalRobotId === robotId) {
+      socketRef.current = globalSocket
+      setIsConnected(true)
+      addLog('Using existing connection', 'info')
       return
+    }
+
+    // Close existing connection if connecting to a different robot
+    if (globalSocket && globalRobotId !== robotId) {
+      globalSocket.close()
+      globalSocket = null
     }
 
     try {
@@ -52,10 +138,13 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
       const url = `${wsUrl}?robotId=${robotId}`
       
       addLog(`Connecting to ${url}...`, 'info')
-      socketRef.current = new WebSocket(url)
+      globalSocket = new WebSocket(url)
+      globalRobotId = robotId
+      socketRef.current = globalSocket
 
-      socketRef.current.onopen = () => {
+      globalSocket.onopen = () => {
         setIsConnected(true)
+        setWsConnected(true)
         addLog('WebSocket connected', 'success')
         // Don't set robot online yet - wait for pong response
         if (robotId) {
@@ -63,8 +152,9 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
         }
       }
 
-      socketRef.current.onclose = (event) => {
+      globalSocket.onclose = (event) => {
         setIsConnected(false)
+        setWsConnected(false)
         setLatestVisionFrame(null)
         if (robotId) {
           updateRobotStatus(robotId, false)
@@ -74,9 +164,11 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
         } else {
           addLog(`WebSocket connection lost (code: ${event.code})`, 'error')
         }
+        globalSocket = null
+        globalRobotId = null
       }
 
-      socketRef.current.onerror = (error) => {
+      globalSocket.onerror = (error) => {
         addLog('WebSocket error occurred', 'error')
         setLatestVisionFrame(null)
         if (robotId) {
@@ -84,57 +176,23 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
         }
       }
 
-      socketRef.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          setLastMessage(data)
-          
-          if (data.type === 'pong' && data.robotId === robotId) {
-            // Robot is online - it responded to ping
-            if (robotId) {
-              updateRobotStatus(robotId, true)
-            }
-            const sentTime = pendingPingsRef.current.get(data.timestamp)
-            if (sentTime) {
-              const roundTripTime = Date.now() - sentTime
-              addLog(`Ping: ${roundTripTime}ms`, 'success')
-              pendingPingsRef.current.delete(data.timestamp)
-            } else {
-              addLog('Received pong response', 'info')
-            }
-          } else if (data.type === 'telemetry' && data.robotId === robotId) {
-            // Handle telemetry data
-            if (robotId && data.payload?.battery !== undefined) {
-              updateRobotBattery(robotId, data.payload.battery)
-              addLog(`Battery: ${data.payload.battery}%`, 'info')
-            }
-          } else if (data.type === 'vision_frame' && data.robotId === robotId) {
-            // Handle vision frame (no logging to reduce spam)
-            setLatestVisionFrame(data)
-          } else if (data.type === 'error' && data.robotId === robotId) {
-            // Robot is offline - error response received
-            if (robotId) {
-              updateRobotStatus(robotId, false)
-            }
-            addLog(`Robot error: ${data.payload?.message || 'Unknown error'}`, 'error')
-          } else {
-            addLog(`Received: ${JSON.stringify(data)}`, 'info')
-          }
-        } catch (error) {
-          addLog(`Received: ${event.data}`, 'info')
-        }
-      }
+      // Message handling is done via addEventListener in useEffect
 
     } catch (error) {
       addLog(`Connection failed: ${error}`, 'error')
     }
-  }, [robotId, addLog, updateRobotStatus, updateRobotBattery])
+  }, [robotId, addLog, updateRobotStatus, setWsConnected])
 
   const disconnect = useCallback(() => {
+    if (globalSocket) {
+      globalSocket.close()
+      globalSocket = null
+      globalRobotId = null
+    }
     if (socketRef.current) {
-      socketRef.current.close()
       socketRef.current = null
       setIsConnected(false)
+      setWsConnected(false)
       setLatestVisionFrame(null)
       if (robotId) {
         updateRobotStatus(robotId, false)
@@ -143,11 +201,12 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
       pendingPingsRef.current.clear()
       addLog('Disconnected', 'info')
     }
-  }, [robotId, addLog, updateRobotStatus])
+  }, [addLog, robotId, updateRobotStatus, setWsConnected])
 
   const send = useCallback((data: any) => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify(data))
+    const socket = globalSocket || socketRef.current
+    if (socket?.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(data))
       addLog(`Sent: ${JSON.stringify(data)}`, 'info')
     } else {
       addLog('Not connected - cannot send message', 'error')
@@ -160,7 +219,8 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
       return
     }
 
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
+    const socket = globalSocket || socketRef.current
+    if (socket?.readyState === WebSocket.OPEN) {
       const timestamp = Date.now()
       const pingMessage: PingMessage = {
         type: 'ping',
@@ -191,31 +251,44 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
     setLogs([])
   }, [])
 
-  // Cleanup on unmount or robotId change
-  useEffect(() => {
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.close()
-      }
-    }
+  const clearPanoramicImage = useCallback(() => {
+    setLatestPanoramicImage(null)
   }, [])
 
-  // Disconnect when robotId changes
+  // Sync state with global socket on mount
   useEffect(() => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      disconnect()
+    if (globalSocket?.readyState === WebSocket.OPEN && globalRobotId === robotId) {
+      socketRef.current = globalSocket
+      setIsConnected(true)
+      setWsConnected(true)
+      
+      // Ping the robot to update its online status
+      if (robotId) {
+        const timestamp = Date.now()
+        const pingMessage: PingMessage = {
+          type: 'ping',
+          robotId,
+          timestamp,
+        }
+        globalSocket.send(JSON.stringify(pingMessage))
+      }
     }
-  }, [robotId, disconnect])
+  }, [robotId, setWsConnected])
+
+  // Don't cleanup on unmount - keep connection persistent
+  // Only disconnect when explicitly called or when changing robots
 
   return {
     isConnected,
     logs,
     lastMessage,
     latestVisionFrame,
+    latestPanoramicImage,
     connect,
     disconnect,
     send,
     ping,
     clearLogs,
+    clearPanoramicImage,
   }
 }

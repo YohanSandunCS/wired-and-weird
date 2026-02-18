@@ -1,4 +1,4 @@
-export type MessageType = "ping" | "pong" | "telemetry" | "event" | "command" | "vision_frame";
+export type MessageType = "ping" | "pong" | "telemetry" | "event" | "command" | "vision_frame" | "panoramic_image";
 
 export interface BaseMessage<T = any> {
   type: MessageType;
@@ -43,7 +43,7 @@ export interface Robot {
 export interface CommandMessage extends BaseMessage {
   type: "command";
   payload: {
-    action: "move" | "stop";
+    action: "move" | "stop" | "panoramic" | "auto" | "manual";
     direction?: "forward" | "backward" | "left" | "right";
   };
   timestamp: number;
@@ -59,6 +59,19 @@ export interface VisionFrameMessage extends BaseMessage {
     height: number;
     quality: number;
     data: string; // base64 encoded image
+  };
+  timestamp: number;
+}
+
+export interface PanoramicImageMessage extends BaseMessage {
+  type: "panoramic_image";
+  robotId: string;
+  payload: {
+    mime: "image/jpeg";
+    width: number;
+    height: number;
+    data: string; // base64 encoded panoramic image
+    captureTime: number;
   };
   timestamp: number;
 }
