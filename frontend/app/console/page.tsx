@@ -11,7 +11,7 @@ import RobotMedicalItemLoadUnload from '@/components/RobotMedicalItemLoadUnload'
 
 export default function ConsolePage() {
   const router = useRouter()
-  const { teamSession, logout, activeRobotId, robots } = useAppStore()
+  const { teamSession, logout, activeRobotId, robots, isAuthenticated } = useAppStore()
   const [isLoadMode, setIsLoadMode] = useState(true)
   const [isRobotBusy, setIsRobotBusy] = useState(false)
 
@@ -26,19 +26,21 @@ export default function ConsolePage() {
     setIsLoadMode(prev => !prev)
   }
 
-  // Redirect if not logged in
+  // Redirect if not authenticated or not logged in
   useEffect(() => {
-    if (!teamSession.loggedIn) {
+    if (!isAuthenticated) {
+      router.push('/face-login')
+    } else if (!teamSession.loggedIn) {
       router.push('/')
     }
-  }, [teamSession.loggedIn, router])
+  }, [isAuthenticated, teamSession.loggedIn, router])
 
   const handleLogout = () => {
     logout()
     router.push('/')
   }
 
-  if (!teamSession.loggedIn) {
+  if (!isAuthenticated || !teamSession.loggedIn) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-gray-600">Loading...</div>
