@@ -57,7 +57,7 @@ def create_websocket_router(manager: ConnectionManager) -> APIRouter:
                         print(f"🤖 [PONG] Robot {robotId} -> consoles")
                         await manager.broadcast_to_consoles(robotId, msg)
 
-                    elif msg.type in ("telemetry", "event", "vision", "mission_update", "vision_frame", "panoramic_image"):
+                    elif msg.type in ("telemetry", "event", "vision", "mission_update", "vision_frame"):
                         print(f"🤖 [DATA] Robot {robotId} {msg.type}")
                         await manager.broadcast_to_consoles(robotId, msg)
 

@@ -9,11 +9,6 @@ from .connection_manager import ConnectionManager
 from .api import create_api_router
 from .websockets import create_websocket_router
 
-# Use simplified auth for demo (works on ANY Python version)
-# Only requires Pillow - already installed and working
-# Other options: .auth_opencv (requires opencv), .auth_production (requires Python 3.12 + dlib)
-from .auth_simple import create_auth_router
-
 
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
@@ -39,7 +34,6 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(create_api_router(manager))
     app.include_router(create_websocket_router(manager), prefix="/ws")
-    app.include_router(create_auth_router(), prefix="/auth")
     
     return app
 

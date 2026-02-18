@@ -8,9 +8,6 @@ interface TeamRobotData {
 }
 
 interface AppState {
-  // Authentication
-  isAuthenticated: boolean
-  
   // Team session
   teamSession: TeamSession
   
@@ -21,14 +18,10 @@ interface AppState {
   robots: Robot[]
   activeRobotId: string | null
   
-  // WebSocket connection state (persistent)
-  wsConnected: boolean
-  
   // Helper functions
   _syncCurrentTeamData: () => void
   
   // Actions
-  setAuthenticated: (value: boolean) => void
   login: (teamCode: string) => void
   logout: () => void
   clearAllRobots: () => void
@@ -36,15 +29,12 @@ interface AppState {
   setActiveRobot: (robotId: string | null) => void
   updateRobotStatus: (robotId: string, isOnline: boolean) => void
   updateRobotBattery: (robotId: string, battery: number) => void
-  setWsConnected: (connected: boolean) => void
 }
 
 const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       // Initial state
-      isAuthenticated: false,
-      
       teamSession: {
         teamCode: '',
         loggedIn: false,
@@ -54,9 +44,6 @@ const useAppStore = create<AppState>()(
       // Current team's robots and activeRobotId (computed)
       robots: [],
       activeRobotId: null,
-      
-      // WebSocket connection state
-      wsConnected: false,
 
       // Helper to sync current team data
       _syncCurrentTeamData: () => {
@@ -70,10 +57,6 @@ const useAppStore = create<AppState>()(
       },
 
       // Actions
-      setAuthenticated: (value: boolean) => {
-        set({ isAuthenticated: value })
-      },
-      
       login: (teamCode: string) => {
         set({
           teamSession: {
@@ -224,11 +207,6 @@ const useAppStore = create<AppState>()(
         const store = get()
         store._syncCurrentTeamData()
       },
-      
-      setWsConnected: (connected: boolean) => {
-        set({ wsConnected: connected })
-      },
-        
     }),
     {
       name: 'medi-runner-store',

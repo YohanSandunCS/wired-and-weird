@@ -9,8 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@mediapipe/camera_utils": "^0.3.1675466862",
-    "@mediapipe/face_detection": "^0.4.1646425229",
     "@zxing/library": "^0.21.3",
     "groq-sdk": "^0.8.0",
     "jsqr": "^1.4.0",

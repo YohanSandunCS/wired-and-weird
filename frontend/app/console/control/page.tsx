@@ -5,23 +5,18 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import useAppStore from '@/store/appStore'
 import { useRobotSocket } from '@/hooks/useRobotSocket'
 import BatteryStatus from '@/components/BatteryStatus'
-import PanoramicViewer from '@/components/PanoramicViewer'
 
 export default function RobotControlPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const robotId = searchParams.get('robotId')
   
-  const { teamSession, robots, isAuthenticated } = useAppStore()
+  const { teamSession, robots } = useAppStore()
   const robot = robots.find(r => r.robotId === robotId)
   
   const [pressedKeys, setPressedKeys] = useState(new Set<string>())
   const [commandHistory, setCommandHistory] = useState<Array<{id: string, command: string, timestamp: number}>>([])
   const [streamStatus, setStreamStatus] = useState<'loading' | 'connected' | 'error'>('loading')
-  const [showPanoramicModal, setShowPanoramicModal] = useState(false)
-  const [isPanoramicCapturing, setIsPanoramicCapturing] = useState(false)
-  const [currentMode, setCurrentMode] = useState<'manual' | 'auto'>('manual')
-  const [manualCommandSent, setManualCommandSent] = useState(false)
   const logContainerRef = useRef<HTMLDivElement>(null)
   const isMouseOnScrollbar = useRef(false)
   
@@ -29,19 +24,13 @@ export default function RobotControlPage() {
     isConnected,
     logs,
     latestVisionFrame,
-    latestPanoramicImage,
     connect,
     disconnect,
     send,
-    clearPanoramicImage,
   } = useRobotSocket(robotId)
 
-  // Redirect if not authenticated or not logged in or no robot
+  // Redirect if not logged in or no robot
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/face-login')
-      return
-    }
     if (!teamSession.loggedIn) {
       router.push('/')
       return
@@ -50,7 +39,7 @@ export default function RobotControlPage() {
       router.push('/console')
       return
     }
-  }, [isAuthenticated, teamSession.loggedIn, robotId, robot, router])
+  }, [teamSession.loggedIn, robotId, robot, router])
 
   // Auto-connect when component mounts
   useEffect(() => {
@@ -58,25 +47,6 @@ export default function RobotControlPage() {
       connect()
     }
   }, [robotId, isConnected, connect])
-
-  // Send manual mode command once connected
-  useEffect(() => {
-    if (isConnected && robotId && !manualCommandSent) {
-      const command = {
-        type: 'command',
-        robotId,
-        payload: {
-          action: 'manual'
-        },
-        timestamp: Date.now()
-      }
-      
-      send(command)
-      setManualCommandSent(true)
-      
-      console.log('Sent manual mode command:', command)
-    }
-  }, [isConnected, robotId, send, manualCommandSent])
 
   const sendMovementCommand = useCallback((direction: string) => {
     if (!isConnected || !robotId) return
@@ -124,63 +94,6 @@ export default function RobotControlPage() {
     setCommandHistory(prev => [...prev, historyEntry].slice(-20))
   }, [isConnected, robotId, send])
 
-  const capturePanoramicImage = useCallback(() => {
-    if (!isConnected || !robotId) return
-    
-    setIsPanoramicCapturing(true)
-    
-    const command = {
-      type: 'command',
-      robotId,
-      payload: {
-        action: 'panoramic'
-      },
-      timestamp: Date.now()
-    }
-    
-    send(command)
-    
-    const historyEntry = {
-      id: Date.now().toString(),
-      command: 'Capture Panoramic Image',
-      timestamp: Date.now()
-    }
-    setCommandHistory(prev => [...prev, historyEntry].slice(-20))
-  }, [isConnected, robotId, send])
-
-  const toggleMode = useCallback(() => {
-    if (!isConnected || !robotId) return
-    
-    const newMode = currentMode === 'manual' ? 'auto' : 'manual'
-    
-    const command = {
-      type: 'command',
-      robotId,
-      payload: {
-        action: newMode === 'auto' ? 'auto' : 'manual'
-      },
-      timestamp: Date.now()
-    }
-    
-    send(command)
-    setCurrentMode(newMode)
-    
-    const historyEntry = {
-      id: Date.now().toString(),
-      command: `Switch to ${newMode === 'auto' ? 'Autonomous' : 'Manual'} Mode`,
-      timestamp: Date.now()
-    }
-    setCommandHistory(prev => [...prev, historyEntry].slice(-20))
-  }, [isConnected, robotId, send, currentMode])
-
-  // Handle panoramic image response
-  useEffect(() => {
-    if (latestPanoramicImage) {
-      setIsPanoramicCapturing(false)
-      setShowPanoramicModal(true)
-    }
-  }, [latestPanoramicImage])
-
   // Auto-scroll for logs
   useEffect(() => {
     const logContainer = logContainerRef.current
@@ -192,9 +105,6 @@ export default function RobotControlPage() {
   // Handle keyboard events
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Don't handle keyboard in auto mode
-      if (currentMode === 'auto') return
-      
       // Prevent default behavior for arrow keys
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(event.code)) {
         event.preventDefault()
@@ -226,9 +136,6 @@ export default function RobotControlPage() {
     }
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      // Don't handle keyboard in auto mode
-      if (currentMode === 'auto') return
-      
       const newPressedKeys = new Set(pressedKeys)
       newPressedKeys.delete(event.code)
       setPressedKeys(newPressedKeys)
@@ -249,7 +156,7 @@ export default function RobotControlPage() {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [pressedKeys, sendMovementCommand, sendStopCommand, currentMode])
+  }, [pressedKeys, sendMovementCommand, sendStopCommand])
 
   useEffect(() => {
     const logContainer = logContainerRef.current
@@ -289,23 +196,15 @@ export default function RobotControlPage() {
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => router.push('/console')}
+                className="text-gray-600 hover:text-gray-900"
+              >
+                ← Back to Console
+              </button>
               <h1 className="text-xl font-semibold text-gray-900">
                 Robot Control Panel
               </h1>
-              <div className="flex items-center space-x-2 ml-4">
-                <span className="text-sm text-gray-600">Mode:</span>
-                <button
-                  onClick={toggleMode}
-                  disabled={!isConnected}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                    currentMode === 'manual'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-purple-600 text-white'
-                  }`}
-                >
-                  {currentMode === 'manual' ? '🎮 Manual' : '🤖 Auto'}
-                </button>
-              </div>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
@@ -336,12 +235,6 @@ export default function RobotControlPage() {
                   Robot: {robot.isOnline ? 'Online' : 'Offline'}
                 </span>
               </div>
-              <button
-                onClick={() => router.push('/console')}
-                className="px-3 py-2 rounded-md bg-gray-600 text-white text-sm font-medium hover:bg-gray-700 transition-colors"
-              >
-                ✕ Exit
-              </button>
             </div>
           </div>
         </div>
@@ -403,56 +296,32 @@ export default function RobotControlPage() {
                 </div>
               </div>
               
-              {currentMode === 'manual' && (
+              {latestVisionFrame && (
                 <div className="p-6 bg-white border-t border-gray-200">
                   <div className="text-xs text-gray-500 space-y-2">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-semibold text-gray-700">⌨️ Keyboard Controls</span>
-                      {isConnected && (
-                        <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800 font-medium">
-                          Active
-                        </span>
-                      )}
+                    <div className="flex justify-between">
+                      <span>Keyboard key mapping:</span>
+                      <span className="font-mono">{latestVisionFrame.role}</span>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm pt-2">
                       <div className="flex items-center space-x-2">
-                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
-                          pressedKeys.has('ArrowUp') 
-                            ? 'bg-blue-500 text-white border-blue-600' 
-                            : 'bg-gray-100 text-gray-800 border-gray-200'
-                        }`}>↑</kbd>
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↑</kbd>
                         <span className="text-gray-800">Forward</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
-                          pressedKeys.has('ArrowDown') 
-                            ? 'bg-blue-500 text-white border-blue-600' 
-                            : 'bg-gray-100 text-gray-800 border-gray-200'
-                        }`}>↓</kbd>
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↓</kbd>
                         <span className="text-gray-800">Backward</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
-                          pressedKeys.has('ArrowLeft') 
-                            ? 'bg-blue-500 text-white border-blue-600' 
-                            : 'bg-gray-100 text-gray-800 border-gray-200'
-                        }`}>←</kbd>
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">←</kbd>
                         <span className="text-gray-800">Turn Left</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
-                          pressedKeys.has('ArrowRight') 
-                            ? 'bg-blue-500 text-white border-blue-600' 
-                            : 'bg-gray-100 text-gray-800 border-gray-200'
-                        }`}>→</kbd>
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→</kbd>
                         <span className="text-gray-800">Turn Right</span>
                       </div>
                       <div className="flex items-center space-x-2 col-span-2">
-                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
-                          pressedKeys.has('Space') 
-                            ? 'bg-red-500 text-white border-red-600' 
-                            : 'bg-gray-100 text-gray-800 border-gray-200'
-                        }`}>Space</kbd>
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Space</kbd>
                         <span className="text-gray-800">Emergency Stop</span>
                       </div>
                     </div>
@@ -466,14 +335,7 @@ export default function RobotControlPage() {
           <div className="w-1/4 flex flex-col space-y-6">
             {/* Input Visualizer */}
             <div className="bg-white rounded-lg p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-medium text-gray-900">D-Pad</h2>
-                {currentMode === 'auto' && (
-                  <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 font-medium">
-                    Controls Disabled (Auto Mode)
-                  </span>
-                )}
-              </div>
+              <h2 className="text-lg font-medium text-gray-900 mb-4">D-Pad</h2>
               <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
                 <div></div>
                 <button
@@ -483,7 +345,7 @@ export default function RobotControlPage() {
                       : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('forward')}
-                  disabled={!isConnected || currentMode === 'auto'}
+                  disabled={!isConnected || !robot.isOnline}
                 >
                   🡑
                 </button>
@@ -496,14 +358,14 @@ export default function RobotControlPage() {
                       : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('left')}
-                  disabled={!isConnected || currentMode === 'auto'}
+                  disabled={!isConnected || !robot.isOnline}
                 >
                   🡐
                 </button>
                 <button
                   className="p-4 rounded-md border-2 bg-red-500 text-white text-sm hover:bg-red-600 border-red-500"
                   onClick={sendStopCommand}
-                  disabled={!isConnected || currentMode === 'auto'}
+                  disabled={!isConnected}
                 >
                   STOP
                 </button>
@@ -514,7 +376,7 @@ export default function RobotControlPage() {
                       : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('right')}
-                  disabled={!isConnected || currentMode === 'auto'}
+                  disabled={!isConnected || !robot.isOnline}
                 >
                   🡒
                 </button>
@@ -527,22 +389,11 @@ export default function RobotControlPage() {
                       : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('backward')}
-                  disabled={!isConnected || currentMode === 'auto'}
+                  disabled={!isConnected || !robot.isOnline}
                 >
                   🡓
                 </button>
                 <div></div>
-              </div>
-              
-              {/* Panoramic Capture Button */}
-              <div className="mt-4">
-                <button
-                  onClick={capturePanoramicImage}
-                  disabled={!isConnected || isPanoramicCapturing}
-                  className="w-full p-3 rounded-md border-2 bg-purple-500 text-white font-medium hover:bg-purple-600 border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isPanoramicCapturing ? '📸 Capturing...' : '📸 360° Panoramic'}
-                </button>
               </div>
             </div>
 
@@ -582,20 +433,6 @@ export default function RobotControlPage() {
           MediRunner Robot Control Interface
         </div>
       </footer>
-
-      {/* Panoramic Image Viewer */}
-      {showPanoramicModal && latestPanoramicImage && (
-        <PanoramicViewer
-          imageUrl={`data:${latestPanoramicImage.payload.mime};base64,${latestPanoramicImage.payload.data}`}
-          onClose={() => {
-            setShowPanoramicModal(false)
-            clearPanoramicImage()
-          }}
-          captureTime={latestPanoramicImage.payload.captureTime}
-          width={latestPanoramicImage.payload.width}
-          height={latestPanoramicImage.payload.height}
-        />
-      )}
     </div>
   )
 }
