@@ -324,57 +324,78 @@ class LineFollower:
         r2 = sensors['right2'] == 0
         active = sum([l2, l1, c, r1, r2])
 
-        bs   = self.base_speed
-        g    = bs * 0.20   # gentle offset
-        s    = bs * 0.40   # sharp  offset
-        mn   = max(self.min_motor_speed, bs * 0.10)  # near-stop inner wheel
+        bs = self.base_speed
+        # Fixed speed levels — not fractions so they're meaningful at low base speeds
+        gentle = 15   # speed difference for slight drift (outer gains, inner loses this much)
+        sharp  = 25   # speed difference for clear drift
+        pivot  = 35   # speed difference for edge sensors (outer near-full, inner near-stop)
+        mn     = self.min_motor_speed
+
+        # Helper: build (left_speed, right_speed) for "turn towards line on RIGHT side"
+        # i.e. line is right of robot → robot must steer right → slow LEFT, speed RIGHT
+        # INVERT_MOTOR_CORRECTION flips which physical wheel is "left" vs "right"
+        inv = Config.INVERT_MOTOR_CORRECTION
+
+        def steer(offset, side):
+            """
+            side='right': line is right → slow left wheel, speed right wheel
+            side='left':  line is left  → speed left wheel, slow right wheel
+            Returns (left_speed, right_speed)
+            """
+            outer = min(100, bs + offset)
+            inner = max(mn,   bs - offset)
+            if side == 'right':
+                l, r = inner, outer
+            else:
+                l, r = outer, inner
+            if inv:
+                l, r = r, l   # swap physical wiring sense
+            return l, r
 
         if active >= 4:
-            # Intersection — keep straight
             lspd, rspd, label = bs, bs, 'INTERSECTION'
 
         elif c and not l1 and not r1 and not l2 and not r2:
-            # Dead-centre
             lspd, rspd, label = bs, bs, 'STRAIGHT'
 
         elif c and r1 and not r2 and not l1:
-            # Drifting slightly right — gentle left turn
-            lspd, rspd, label = bs - g, bs + g, 'GENTLE_LEFT'
+            # Slight right drift
+            lspd, rspd = steer(gentle, 'right')
+            label = 'GENTLE_RIGHT'
 
         elif c and l1 and not l2 and not r1:
-            # Drifting slightly left — gentle right turn
-            lspd, rspd, label = bs + g, bs - g, 'GENTLE_RIGHT'
+            # Slight left drift
+            lspd, rspd = steer(gentle, 'left')
+            label = 'GENTLE_LEFT'
 
         elif r1 and not c and not r2:
-            # Clearly right of centre — turn left
-            lspd, rspd, label = bs - s, bs + s, 'TURN_LEFT'
+            # Clear right drift
+            lspd, rspd = steer(sharp, 'right')
+            label = 'TURN_RIGHT'
 
         elif l1 and not c and not l2:
-            # Clearly left of centre — turn right
-            lspd, rspd, label = bs + s, bs - s, 'TURN_RIGHT'
+            # Clear left drift
+            lspd, rspd = steer(sharp, 'left')
+            label = 'TURN_LEFT'
 
         elif r2:
-            # Far right — sharp left pivot
-            lspd, rspd, label = mn, min(100, bs + s), 'SHARP_LEFT'
+            # Far right — hard steer right
+            lspd, rspd = steer(pivot, 'right')
+            label = 'SHARP_RIGHT'
 
         elif l2:
-            # Far left — sharp right pivot
-            lspd, rspd, label = min(100, bs + s), mn, 'SHARP_RIGHT'
+            # Far left — hard steer left
+            lspd, rspd = steer(pivot, 'left')
+            label = 'SHARP_LEFT'
 
         else:
-            # Ambiguous multi-sensor state — go straight
             lspd, rspd, label = bs, bs, 'STRAIGHT(AMB)'
 
-        # Clamp
-        lspd = max(self.min_motor_speed, min(100, lspd))
-        rspd = max(self.min_motor_speed, min(100, rspd))
+        lspd = max(mn, min(100, lspd))
+        rspd = max(mn, min(100, rspd))
 
-        # Respect INVERT_MOTOR_CORRECTION
-        if Config.INVERT_MOTOR_CORRECTION:
-            lspd, rspd = rspd, lspd
-            label += '(INV)'
-
-        print(f"[LF:IFEL] t={self._ts()} i={self._iteration} {label} L={lspd:.0f} R={rspd:.0f} active={active} l2={int(l2)} l1={int(l1)} c={int(c)} r1={int(r1)} r2={int(r2)}")
+        inv_str = '(INV)' if inv else ''
+        print(f"[LF:IFEL] t={self._ts()} i={self._iteration} {label}{inv_str} L={lspd:.0f} R={rspd:.0f} base={bs} active={active} l2={int(l2)} l1={int(l1)} c={int(c)} r1={int(r1)} r2={int(r2)}")
         self.motors.set_motor_speeds(lspd, rspd)
 
     # ------------------------------------------------------------------
