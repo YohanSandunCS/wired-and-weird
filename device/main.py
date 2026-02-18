@@ -42,8 +42,9 @@ class MediRunnerRobot:
         
         # Robot state
         self.running = False
-        self.mode = 'manual'  # 'manual' or 'auto'
-        self.auto_mode_active = False
+        # Start in auto mode if WebSocket is disabled (for standalone line following)
+        self.mode = 'manual' if Config.ENABLE_WEBSOCKET else 'auto'
+        self.auto_mode_active = not Config.ENABLE_WEBSOCKET
         
         # Setup signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -107,6 +108,10 @@ class MediRunnerRobot:
     
     async def initialize_network(self):
         """Initialize WebSocket connection to gateway"""
+        if not Config.ENABLE_WEBSOCKET:
+            print("\n[Main] WebSocket disabled - running in standalone mode")
+            return True
+        
         try:
             print("\n[Main] Initializing network connection...")
             
@@ -294,6 +299,7 @@ class MediRunnerRobot:
             return
         
         print("[Main] Starting autonomous control loop")
+        print(f"[Main] Auto mode active: {self.auto_mode_active}")
         
         while self.running:
             try:
@@ -362,7 +368,9 @@ class MediRunnerRobot:
         print("\n" + "=" * 60)
         print("MediRunner Robot Online - Stage 1")
         print(f"Robot ID: {Config.ROBOT_ID}")
-        print(f"Mode: {self.mode}")
+        print(f"Mode: {self.mode.upper()}")
+        if not Config.ENABLE_WEBSOCKET:
+            print("Running in STANDALONE mode (WebSocket disabled)")
         print("=" * 60 + "\n")
         
         # Start telemetry, camera, and autonomous control loops

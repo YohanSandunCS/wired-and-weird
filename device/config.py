@@ -70,8 +70,9 @@ class Config:
     # Hardware Enable/Disable Flags (for testing)
     ENABLE_MOTORS = os.getenv('ENABLE_MOTORS', 'True').lower() in ('true', '1', 'yes')
     ENABLE_CAMERA = os.getenv('ENABLE_CAMERA', 'False').lower() in ('true', '1', 'yes')
-    ENABLE_SENSORS = os.getenv('ENABLE_SENSORS', 'False').lower() in ('true', '1', 'yes')
+    ENABLE_SENSORS = os.getenv('ENABLE_SENSORS', 'True').lower() in ('true', '1', 'yes')
     ENABLE_BUZZER = os.getenv('ENABLE_BUZZER', 'False').lower() in ('true', '1', 'yes')
+    ENABLE_WEBSOCKET = os.getenv('ENABLE_WEBSOCKET', 'False').lower() in ('true', '1', 'yes')
     
     @classmethod
     def display(cls):
@@ -86,8 +87,9 @@ class Config:
         print(f"Debug Mode: {cls.DEBUG}")
         print("-" * 50)
         print("Hardware Status:")
-        print(f"  Motors:  {'ENABLED' if cls.ENABLE_MOTORS else 'DISABLED'}")
-        print(f"  Camera:  {'ENABLED' if cls.ENABLE_CAMERA else 'DISABLED'}")
-        print(f"  Sensors: {'ENABLED' if cls.ENABLE_SENSORS else 'DISABLED'}")
-        print(f"  Buzzer:  {'ENABLED' if cls.ENABLE_BUZZER else 'DISABLED'}")
+        print(f"  Motors:    {'ENABLED' if cls.ENABLE_MOTORS else 'DISABLED'}")
+        print(f"  Camera:    {'ENABLED' if cls.ENABLE_CAMERA else 'DISABLED'}")
+        print(f"  Sensors:   {'ENABLED' if cls.ENABLE_SENSORS else 'DISABLED'}")
+        print(f"  Buzzer:    {'ENABLED' if cls.ENABLE_BUZZER else 'DISABLED'}")
+        print(f"  WebSocket: {'ENABLED' if cls.ENABLE_WEBSOCKET else 'DISABLED'}")
         print("=" * 50)
