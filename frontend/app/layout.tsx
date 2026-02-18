@@ -10,11 +10,13 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Medi Runner Team WW",
-  description: "Robotics competition console interface for team coordination and robot management",
+  description:
+    "Robotics competition console interface for team coordination and robot management",
 };
 
 // Control ChatAssistant visibility via environment variable
-const SHOW_CHAT_ASSISTANT = process.env.NEXT_PUBLIC_ENABLE_CHAT_ASSISTANT === 'true';
+const SHOW_CHAT_ASSISTANT =
+  process.env.NEXT_PUBLIC_ENABLE_CHAT_ASSISTANT === "true";
 
 export default function RootLayout({
   children,
@@ -23,7 +25,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased`}>
+      <body
+        className={`${inter.className} antialiased bg-[#0B0F2A] text-gray-100`}
+      >
         {children}
         {SHOW_CHAT_ASSISTANT && <ChatAssistant />}
       </body>
