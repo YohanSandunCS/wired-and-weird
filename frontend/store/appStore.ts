@@ -81,7 +81,6 @@ const useAppStore = create<AppState>()(
 
       logout: () => {
         set({
-          isAuthenticated: false,
           teamSession: {
             teamCode: '',
             loggedIn: false,
