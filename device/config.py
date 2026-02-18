@@ -22,12 +22,12 @@ class Config:
     
     # GPIO Pin Configuration (BCM numbering)
     # L298N Motor Driver
-    MOTOR_LEFT_FORWARD = int(os.getenv('MOTOR_LEFT_FORWARD', '17'))
-    MOTOR_LEFT_BACKWARD = int(os.getenv('MOTOR_LEFT_BACKWARD', '18'))
-    MOTOR_LEFT_ENABLE = int(os.getenv('MOTOR_LEFT_ENABLE', '22'))
-    MOTOR_RIGHT_FORWARD = int(os.getenv('MOTOR_RIGHT_FORWARD', '23'))
-    MOTOR_RIGHT_BACKWARD = int(os.getenv('MOTOR_RIGHT_BACKWARD', '24'))
-    MOTOR_RIGHT_ENABLE = int(os.getenv('MOTOR_RIGHT_ENABLE', '25'))
+    MOTOR_LEFT_FORWARD = int(os.getenv('MOTOR_LEFT_FORWARD', '23'))    # IN1
+    MOTOR_LEFT_BACKWARD = int(os.getenv('MOTOR_LEFT_BACKWARD', '22'))  # IN2
+    MOTOR_LEFT_ENABLE = int(os.getenv('MOTOR_LEFT_ENABLE', '20'))      # ENA
+    MOTOR_RIGHT_FORWARD = int(os.getenv('MOTOR_RIGHT_FORWARD', '27'))  # IN3
+    MOTOR_RIGHT_BACKWARD = int(os.getenv('MOTOR_RIGHT_BACKWARD', '17')) # IN4
+    MOTOR_RIGHT_ENABLE = int(os.getenv('MOTOR_RIGHT_ENABLE', '16'))    # ENB
     
     # IR Line Sensors
     IR_SENSOR_LEFT2 = int(os.getenv('IR_SENSOR_LEFT2', '5'))
@@ -59,6 +59,12 @@ class Config:
     # Debug Mode
     DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
     
+    # Hardware Enable/Disable Flags (for testing)
+    ENABLE_MOTORS = os.getenv('ENABLE_MOTORS', 'True').lower() in ('true', '1', 'yes')
+    ENABLE_CAMERA = os.getenv('ENABLE_CAMERA', 'False').lower() in ('true', '1', 'yes')
+    ENABLE_SENSORS = os.getenv('ENABLE_SENSORS', 'False').lower() in ('true', '1', 'yes')
+    ENABLE_BUZZER = os.getenv('ENABLE_BUZZER', 'False').lower() in ('true', '1', 'yes')
+    
     @classmethod
     def display(cls):
         """Display current configuration (for debugging)"""
@@ -70,4 +76,10 @@ class Config:
         print(f"Gateway URL: {cls.GATEWAY_URL}")
         print(f"Camera: {cls.CAMERA_WIDTH}x{cls.CAMERA_HEIGHT} @ {cls.CAMERA_FPS}fps")
         print(f"Debug Mode: {cls.DEBUG}")
+        print("-" * 50)
+        print("Hardware Status:")
+        print(f"  Motors:  {'ENABLED' if cls.ENABLE_MOTORS else 'DISABLED'}")
+        print(f"  Camera:  {'ENABLED' if cls.ENABLE_CAMERA else 'DISABLED'}")
+        print(f"  Sensors: {'ENABLED' if cls.ENABLE_SENSORS else 'DISABLED'}")
+        print(f"  Buzzer:  {'ENABLED' if cls.ENABLE_BUZZER else 'DISABLED'}")
         print("=" * 50)

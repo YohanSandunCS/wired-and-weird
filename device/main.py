@@ -58,18 +58,34 @@ class MediRunnerRobot:
             print("\n[Main] Initializing hardware...")
             
             # Initialize buzzer first for audio feedback
-            self.buzzer = Buzzer()
-            self.buzzer.alert_startup()
+            if Config.ENABLE_BUZZER:
+                self.buzzer = Buzzer()
+                self.buzzer.alert_startup()
+                print("[Main] ✓ Buzzer initialized")
+            else:
+                print("[Main] ✗ Buzzer disabled")
             
             # Initialize motors
-            self.motors = MotorController()
+            if Config.ENABLE_MOTORS:
+                self.motors = MotorController()
+                print("[Main] ✓ Motors initialized")
+            else:
+                print("[Main] ✗ Motors disabled")
             
             # Initialize sensors
-            self.sensors = SensorArray()
+            if Config.ENABLE_SENSORS:
+                self.sensors = SensorArray()
+                print("[Main] ✓ Sensors initialized")
+            else:
+                print("[Main] ✗ Sensors disabled")
             
             # Initialize camera
-            self.camera = Camera()
-            self.camera.start()
+            if Config.ENABLE_CAMERA:
+                self.camera = Camera()
+                self.camera.start()
+                print("[Main] ✓ Camera initialized")
+            else:
+                print("[Main] ✗ Camera disabled")
             
             print("[Main] Hardware initialization complete")
             return True
@@ -124,27 +140,33 @@ class MediRunnerRobot:
             
             # Motor commands
             if command == 'forward':
-                speed = payload.get('speed', Config.DEFAULT_MOTOR_SPEED)
-                self.motors.forward(speed)
+                if self.motors:
+                    speed = payload.get('speed', Config.DEFAULT_MOTOR_SPEED)
+                    self.motors.forward(speed)
             
             elif command == 'backward':
-                speed = payload.get('speed', Config.DEFAULT_MOTOR_SPEED)
-                self.motors.backward(speed)
+                if self.motors:
+                    speed = payload.get('speed', Config.DEFAULT_MOTOR_SPEED)
+                    self.motors.backward(speed)
             
             elif command == 'left':
-                speed = payload.get('speed', Config.TURN_MOTOR_SPEED)
-                self.motors.turn_left(speed)
+                if self.motors:
+                    speed = payload.get('speed', Config.TURN_MOTOR_SPEED)
+                    self.motors.turn_left(speed)
             
             elif command == 'right':
-                speed = payload.get('speed', Config.TURN_MOTOR_SPEED)
-                self.motors.turn_right(speed)
+                if self.motors:
+                    speed = payload.get('speed', Config.TURN_MOTOR_SPEED)
+                    self.motors.turn_right(speed)
             
             elif command == 'stop':
-                self.motors.stop()
+                if self.motors:
+                    self.motors.stop()
             
             elif command == 'set_speed':
-                speed = payload.get('speed', Config.DEFAULT_MOTOR_SPEED)
-                self.motors.set_speed(speed)
+                if self.motors:
+                    speed = payload.get('speed', Config.DEFAULT_MOTOR_SPEED)
+                    self.motors.set_speed(speed)
             
             # Mode switching
             elif command == 'set_mode':
@@ -180,8 +202,10 @@ class MediRunnerRobot:
         while self.running:
             try:
                 if self.ws_client and self.ws_client.connected:
-                    # Read sensor data
-                    sensor_data = self.sensors.read_all()
+                    # Read sensor data if sensors are enabled
+                    sensor_data = {}
+                    if self.sensors:
+                        sensor_data = self.sensors.read_all()
                     
                     # Build telemetry payload
                     telemetry = {
@@ -202,6 +226,13 @@ class MediRunnerRobot:
     
     async def camera_loop(self):
         """Periodically capture and send camera frames"""
+        if not self.camera:
+            print("[Main] Camera loop skipped (camera disabled)")
+            # Keep loop alive but do nothing
+            while self.running:
+                await asyncio.sleep(1)
+            return
+        
         print("[Main] Starting camera loop")
         
         # Calculate frame interval from FPS
