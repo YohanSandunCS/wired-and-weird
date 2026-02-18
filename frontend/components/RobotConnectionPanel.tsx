@@ -101,14 +101,22 @@ export default function RobotConnectionPanel() {
           </button>
         </div>
 
-        {/* Control Robot Button */}
+        {/* Control Robot Buttons */}
         {isConnected && activeRobot?.isOnline && (
-          <button
-            onClick={() => router.push(`/console/control?robotId=${activeRobotId}`)}
-            className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            🎮 Control Robot
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={() => router.push(`/console/control?robotId=${activeRobotId}`)}
+              className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              🎮 Control Robot
+            </button>
+            <button
+              onClick={() => router.push(`/console/auto?robotId=${activeRobotId}`)}
+              className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+            >
+              🤖 Autonomous Mode
+            </button>
+          </div>
         )}
 
         {/* Connection Status Indicators */}
