@@ -1,27 +1,23 @@
 'use client'
 
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import useAppStore from '@/store/appStore'
 import { useRobotSocket } from '@/hooks/useRobotSocket'
 import BatteryStatus from './BatteryStatus'
 
 export default function RobotConnectionPanel() {
   const router = useRouter()
-  const pathname = usePathname()
-  const { activeRobotId, robots, wsConnected } = useAppStore()
+  const { activeRobotId, robots } = useAppStore()
   const activeRobot = robots.find(robot => robot.robotId === activeRobotId)
   
   const {
-    isConnected: localIsConnected,
+    isConnected,
     logs,
     connect,
     disconnect,
     ping,
     clearLogs
   } = useRobotSocket(activeRobotId)
-
-  // Use global wsConnected state as source of truth
-  const isConnected = wsConnected || localIsConnected
 
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5000/ws'
 
@@ -105,35 +101,14 @@ export default function RobotConnectionPanel() {
           </button>
         </div>
 
-        {/* Mode Toggle */}
-        {isConnected && (
-          <div className="bg-gray-100 rounded-lg p-3">
-            <div className="text-xs text-gray-600 mb-2 text-center font-medium">
-              Select Mode
-            </div>
-            <div className="flex rounded-lg overflow-hidden border-2 border-gray-300">
-              <button
-                onClick={() => router.push(`/console/control?robotId=${activeRobotId}`)}
-                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                  pathname?.includes('/console/control')
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                🎮 Manual
-              </button>
-              <button
-                onClick={() => router.push(`/console/auto?robotId=${activeRobotId}`)}
-                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                  pathname?.includes('/console/auto')
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                🤖 Auto
-              </button>
-            </div>
-          </div>
+        {/* Control Robot Button */}
+        {isConnected && activeRobot?.isOnline && (
+          <button
+            onClick={() => router.push(`/console/control?robotId=${activeRobotId}`)}
+            className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            🎮 Control Robot
+          </button>
         )}
 
         {/* Connection Status Indicators */}

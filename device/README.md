@@ -13,17 +13,6 @@ Stage 1 includes:
 - ✅ Remote command reception and execution
 - ✅ Automatic reconnection logic
 
-## Stage 2 Implementation
-
-Stage 2 adds autonomous navigation:
-- ✅ PID-based line following controller
-- ✅ 5-sensor IR array integration
-- ✅ Differential steering for smooth tracking
-- ✅ Line lost detection and recovery
-- ✅ Obstacle detection (proximity + bump sensors)
-- ✅ Automatic mode switching (manual ↔ auto)
-- ✅ Configurable PID gains and speeds
-
 ## Project Structure
 
 ```
@@ -32,14 +21,12 @@ device/
 ├── config.py                # Configuration management (.env loader)
 ├── requirements.txt         # Python dependencies
 ├── .env.example            # Environment variables template
-├── test_line_follower.py   # Standalone line following test script
 ├── hardware/               # Hardware control modules
 │   ├── __init__.py
 │   ├── motors.py           # L298N motor driver control
 │   ├── sensors.py          # IR sensors, proximity, bump sensors
 │   ├── camera.py           # Raspberry Pi Camera Module
-│   ├── buzzer.py           # Audio alerts
-│   └── line_follower.py    # PID-based line following controller
+│   └── buzzer.py           # Audio alerts
 └── network/                # Network communication
     ├── __init__.py
     └── websocket_client.py # Gateway WebSocket client
@@ -224,143 +211,6 @@ The robot accepts the following commands via WebSocket:
 ```json
 {"type": "command", "payload": {"command": "beep"}}
 ```
-
-## Line Following (Stage 2)
-
-The robot implements autonomous line following using a PID controller with the 5-sensor IR array.
-
-### Features
-- **PID-based control**: Proportional-Integral-Derivative controller for smooth tracking
-- **Differential steering**: Independent left/right motor speed control for precise turns
-- **Line lost recovery**: Automatic search pattern when line is lost
-- **Obstacle detection**: Stops when proximity or bump sensors trigger
-- **Configurable parameters**: Tune PID gains and speeds via `.env` file
-
-### Configuration
-
-Add these parameters to your `.env` file:
-
-```bash
-# Line Following Configuration
-LINE_FOLLOW_SPEED=60           # Base speed during line following (0-100)
-LINE_FOLLOW_KP=25.0            # Proportional gain
-LINE_FOLLOW_KI=0.1             # Integral gain
-LINE_FOLLOW_KD=15.0            # Derivative gain
-LINE_LOST_MAX_COUNT=20         # Max iterations before stopping
-LINE_FOLLOW_UPDATE_RATE=0.05   # Control loop rate (seconds, 20Hz)
-```
-
-### PID Tuning Guide
-
-**Proportional (Kp)**: Controls immediate response to error
-- Too high: Oscillation, aggressive turns
-- Too low: Slow response, drifts off line
-- Start: 20-30
-
-**Integral (Ki)**: Corrects accumulated error over time
-- Too high: Overshoot, instability
-- Too low: Steady-state error
-- Start: 0.0-0.2
-
-**Derivative (Kd)**: Dampens oscillation, predicts future error
-- Too high: Noise sensitivity, jittery movement
-- Too low: Overshoots on curves
-- Start: 10-20
-
-### Testing Line Follower
-
-Use the standalone test script to calibrate and test:
-
-```bash
-cd device
-python3 test_line_follower.py
-```
-
-This script provides:
-1. **Calibration mode**: View real-time sensor readings to verify line detection
-2. **Line following test**: Run PID controller without full system
-3. **Visual feedback**: Progress indicators and sensor status display
-
-### Activating Autonomous Mode
-
-#### Via WebSocket Command
-```json
-{"type": "command", "payload": {"command": "set_mode", "mode": "auto"}}
-```
-
-#### Behavior
-- Robot starts following line immediately
-- Monitors proximity/bump sensors continuously
-- Stops and alerts on obstacle detection
-- Switches back to manual mode on line loss or collision
-
-#### Deactivating Autonomous Mode
-```json
-{"type": "command", "payload": {"command": "set_mode", "mode": "manual"}}
-```
-
-### Line Following Algorithm
-
-The PID controller calculates line position error using weighted sensor readings:
-
-```
-Sensor Positions: [-2, -1, 0, +1, +2]
-                  [L2, L1, C, R1, R2]
-
-Error = Weighted Average Position
-- Negative error → Line is left → Turn left
-- Positive error → Line is right → Turn right
-- Zero error → Line centered → Go straight
-```
-
-**Example Scenarios:**
-- Center sensor only: Error = 0 (straight)
-- Right1 sensor only: Error = +1 (turn right)
-- Left1 + Center: Error = -0.5 (slight left)
-- All sensors: Line intersection (continues forward)
-
-### Line Lost Recovery
-
-When all sensors read white (line lost), the robot:
-1. **Iterations 1-3**: Continue forward slowly (line might reappear)
-2. **Iterations 4-10**: Turn in last known direction to search
-3. **After 20 iterations**: Stop completely and switch to manual mode
-
-### Troubleshooting Line Following
-
-**Robot doesn't follow line**
-- Check sensors are enabled: `ENABLE_SENSORS=True` in `.env`
-- Run calibration mode to verify sensor readings
-- Ensure line is black on white surface (or adjust sensor thresholds)
-- Test on a clear, well-defined line (25-30mm width recommended)
-
-**Robot oscillates on line**
-- Reduce Kp gain (too reactive)
-- Increase Kd gain (add damping)
-- Lower base speed
-
-**Robot drifts off line**
-- Increase Kp gain (more responsive)
-- Check sensor alignment (should be perpendicular to line)
-- Verify all sensors are working (use calibration mode)
-
-**Robot too slow on curves**
-- Increase base speed cautiously
-- Adjust Ki to handle steady turns better
-- Ensure adequate motor power supply
-
-**Line lost frequently**
-- Lower speed to give sensors more time to detect
-- Check line quality (solid black, no breaks)
-- Increase `LINE_LOST_MAX_COUNT` for more recovery time
-
-### Hardware Requirements for Line Following
-
-- ✅ 5 IR line sensors properly connected and working
-- ✅ Motors with PWM speed control (L298N driver)
-- ✅ Adequate power supply (motors draw significant current)
-- ✅ Black line on white surface (or inverse with sensor calibration)
-- ✅ Proximity/bump sensors (optional but recommended for safety)
 
 ## Telemetry Data Output
 
