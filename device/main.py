@@ -143,44 +143,68 @@ class MediRunnerRobot:
         Args:
             message: Dict containing command data
         """
+        # Debug: print raw received message
+        if Config.DEBUG:
+            print(f"[Main] RAW MESSAGE: {message}")
+        
         msg_type = message.get('type')
         payload = message.get('payload', {})
         
         if msg_type == 'command':
-            command = payload.get('command')
+            # Support both formats: {command: "left"} and {action: "move", direction: "left"}
+            command = payload.get('command') or payload.get('direction')
+            action = payload.get('action')
             
             if Config.DEBUG:
-                print(f"[Main] Executing command: {command}")
+                print(f"[Main] Command: {command}, Action: {action}, Payload: {payload}")
+            
+            # Skip if no valid command found
+            if not command:
+                if Config.DEBUG:
+                    print(f"[Main] ⚠ No valid command found in payload")
+                return
             
             # Motor commands
-            if command == 'forward':
+            if command == 'forward' or command == 'up':
                 if self.motors:
                     speed = payload.get('speed', Config.DEFAULT_MOTOR_SPEED)
                     self.motors.forward(speed)
+                    if Config.DEBUG:
+                        print(f"[Main] ✓ Moving forward at speed {speed}")
             
-            elif command == 'backward':
+            elif command == 'backward' or command == 'down':
                 if self.motors:
                     speed = payload.get('speed', Config.DEFAULT_MOTOR_SPEED)
                     self.motors.backward(speed)
+                    if Config.DEBUG:
+                        print(f"[Main] ✓ Moving backward at speed {speed}")
             
             elif command == 'left':
                 if self.motors:
                     speed = payload.get('speed', Config.TURN_MOTOR_SPEED)
                     self.motors.turn_left(speed)
+                    if Config.DEBUG:
+                        print(f"[Main] ✓ Turning left at speed {speed}")
             
             elif command == 'right':
                 if self.motors:
                     speed = payload.get('speed', Config.TURN_MOTOR_SPEED)
                     self.motors.turn_right(speed)
+                    if Config.DEBUG:
+                        print(f"[Main] ✓ Turning right at speed {speed}")
             
             elif command == 'stop':
                 if self.motors:
                     self.motors.stop()
+                    if Config.DEBUG:
+                        print(f"[Main] ✓ Motors stopped")
             
             elif command == 'set_speed':
                 if self.motors:
                     speed = payload.get('speed', Config.DEFAULT_MOTOR_SPEED)
                     self.motors.set_speed(speed)
+                    if Config.DEBUG:
+                        print(f"[Main] ✓ Speed set to {speed}")
             
             # Mode switching
             elif command == 'set_mode':
@@ -188,11 +212,19 @@ class MediRunnerRobot:
                 await self.set_mode(mode)
                 if self.buzzer:
                     self.buzzer.beep(0.05)
+                if Config.DEBUG:
+                    print(f"[Main] ✓ Mode switched to {mode}")
             
             # Buzzer commands
             elif command == 'beep':
                 if self.buzzer:
                     self.buzzer.beep()
+                    if Config.DEBUG:
+                        print(f"[Main] ✓ Beep triggered")
+            
+            else:
+                if Config.DEBUG:
+                    print(f"[Main] ⚠ Unknown command: {command}")
             
             # Send acknowledgment
             await self.send_acknowledgment(message.get('id'))
