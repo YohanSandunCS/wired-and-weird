@@ -304,8 +304,8 @@ class MediRunnerRobot:
         while self.running:
             try:
                 if self.auto_mode_active:
-                    # Check for obstacles first
-                    if self.sensors and self.sensors.read_proximity():
+                    # Check for obstacles first (only if proximity sensor enabled)
+                    if Config.ENABLE_PROXIMITY and self.sensors and self.sensors.read_proximity():
                         print("[Main] Obstacle detected! Stopping.")
                         self.motors.stop()
                         if self.buzzer:
@@ -313,8 +313,8 @@ class MediRunnerRobot:
                         await asyncio.sleep(0.5)
                         continue
                     
-                    # Check for bump collision
-                    if self.sensors and self.sensors.read_bump():
+                    # Check for bump collision (only if bump sensor enabled)
+                    if Config.ENABLE_BUMP and self.sensors and self.sensors.read_bump():
                         print("[Main] Collision detected! Stopping.")
                         self.motors.stop()
                         if self.buzzer:

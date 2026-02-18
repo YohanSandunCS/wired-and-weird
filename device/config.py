@@ -73,6 +73,8 @@ class Config:
     ENABLE_SENSORS = os.getenv('ENABLE_SENSORS', 'True').lower() in ('true', '1', 'yes')
     ENABLE_BUZZER = os.getenv('ENABLE_BUZZER', 'False').lower() in ('true', '1', 'yes')
     ENABLE_WEBSOCKET = os.getenv('ENABLE_WEBSOCKET', 'False').lower() in ('true', '1', 'yes')
+    ENABLE_PROXIMITY = os.getenv('ENABLE_PROXIMITY', 'False').lower() in ('true', '1', 'yes')
+    ENABLE_BUMP = os.getenv('ENABLE_BUMP', 'False').lower() in ('true', '1', 'yes')
     
     @classmethod
     def display(cls):
@@ -90,6 +92,8 @@ class Config:
         print(f"  Motors:    {'ENABLED' if cls.ENABLE_MOTORS else 'DISABLED'}")
         print(f"  Camera:    {'ENABLED' if cls.ENABLE_CAMERA else 'DISABLED'}")
         print(f"  Sensors:   {'ENABLED' if cls.ENABLE_SENSORS else 'DISABLED'}")
+        print(f"  Proximity: {'ENABLED' if cls.ENABLE_PROXIMITY else 'DISABLED'}")
+        print(f"  Bump:      {'ENABLED' if cls.ENABLE_BUMP else 'DISABLED'}")
         print(f"  Buzzer:    {'ENABLED' if cls.ENABLE_BUZZER else 'DISABLED'}")
         print(f"  WebSocket: {'ENABLED' if cls.ENABLE_WEBSOCKET else 'DISABLED'}")
         print("=" * 50)
