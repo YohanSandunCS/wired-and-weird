@@ -8,7 +8,7 @@ Robust implementation with:
 - Minimum motor speed to prevent stalling
 - Smart multi-phase line recovery
 - Intersection detection
-- Throttled debug output to prevent I/O bottleneck
+- FULL verbose logging on every iteration for diagnostics
 """
 import time
 from config import Config
@@ -62,18 +62,21 @@ class LineFollower:
         self.last_known_error = 0.0  # continuous error value when line was last seen
         self.last_direction = 'center'
         self.max_lost_iterations = Config.LINE_LOST_MAX_COUNT
-        self.search_phase = 0  # track which recovery phase we're in
+        self.search_phase = 0
         self.search_direction = 'right'
 
-        # Debug throttle — only print every N iterations to avoid I/O bottleneck
+        # Iteration counter & start time for log timestamps
         self._iteration = 0
-        self._debug_every = 10  # print every 10th iteration (~2 Hz at 20 Hz loop)
+        self._start_time = time.time()
 
-        if Config.DEBUG:
-            print(f"[LineFollower] Initialized with PID: Kp={self.kp}, Ki={self.ki}, Kd={self.kd}")
-            print(f"[LineFollower] Base speed: {self.base_speed}, Min motor speed: {self.min_motor_speed}")
-            print(f"[LineFollower] Motor correction inverted: {Config.INVERT_MOTOR_CORRECTION}")
-            print(f"[LineFollower] Sensor inversion: {Config.INVERT_LINE_SENSORS}")
+        print(f"[LF:INIT] t=0.000 PID Kp={self.kp} Ki={self.ki} Kd={self.kd}")
+        print(f"[LF:INIT] t=0.000 base_speed={self.base_speed} min_motor={self.min_motor_speed}")
+        print(f"[LF:INIT] t=0.000 INVERT_MOTOR_CORRECTION={Config.INVERT_MOTOR_CORRECTION}")
+        print(f"[LF:INIT] t=0.000 INVERT_LINE_SENSORS={Config.INVERT_LINE_SENSORS}")
+
+    def _ts(self):
+        """Return elapsed seconds since init as formatted string for log lines."""
+        return f"{time.time() - self._start_time:.3f}"
 
     # ------------------------------------------------------------------
     # Sensor reading & error calculation
@@ -110,18 +113,17 @@ class LineFollower:
                 active_count += 1
                 weighted_sum += SENSOR_WEIGHTS[name]
 
-        # Throttled debug output
-        should_print = Config.DEBUG and (self._iteration % self._debug_every == 0)
-        if should_print:
-            s = sensors
-            sensor_str = (f"L2={s['left2']} L1={s['left1']} C={s['center']} "
-                          f"R1={s['right1']} R2={s['right2']}")
-            print(f"[LineFollower] Sensors: {sensor_str} | Active: {active_count}")
+        # LOG: always print sensor state
+        s = sensors
+        sensor_bits = f"{s['left2']}{s['left1']}{s['center']}{s['right1']}{s['right2']}"
+        active_names = [n for n, v in sensors.items() if v == 0]
 
         if active_count == 0:
-            return None  # line lost
+            print(f"[LF:SENS] t={self._ts()} i={self._iteration} bits={sensor_bits} active=0 LOST")
+            return None
 
         error = weighted_sum / active_count
+        print(f"[LF:SENS] t={self._ts()} i={self._iteration} bits={sensor_bits} active={active_count} names={active_names} err={error:+.2f}")
         return error
 
     def detect_intersection(self, sensors=None):
@@ -155,14 +157,12 @@ class LineFollower:
 
         # --- Integral with anti-windup ---
         self.integral += error * dt
-        # Clamp integral to prevent windup (scaled to be meaningful)
         max_integral = 10.0
         self.integral = max(-max_integral, min(max_integral, self.integral))
         i_term = self.ki * self.integral
 
         # --- Derivative (with simple low-pass filter to reduce noise) ---
         raw_derivative = (error - self.previous_error) / dt
-        # Low-pass: blend with previous to smooth spikes
         alpha = 0.7  # 0 = full filter, 1 = no filter
         filtered_derivative = alpha * raw_derivative
         d_term = self.kd * filtered_derivative
@@ -170,7 +170,8 @@ class LineFollower:
         correction = p_term + i_term + d_term
 
         # Smooth correction to avoid sudden motor jerks
-        smooth_factor = 0.3  # 0 = no smoothing, 1 = full old value
+        smooth_factor = 0.3
+        raw_correction = correction
         correction = (1 - smooth_factor) * correction + smooth_factor * self.last_correction
 
         # Update state
@@ -178,8 +179,8 @@ class LineFollower:
         self.last_time = current_time
         self.last_correction = correction
 
-        if Config.DEBUG and (self._iteration % self._debug_every == 0):
-            print(f"[LineFollower] PID: P={p_term:.1f} I={i_term:.1f} D={d_term:.1f} → corr={correction:.1f}")
+        # LOG: always print PID breakdown
+        print(f"[LF:PID ] t={self._ts()} i={self._iteration} err={error:+.2f} dt={dt:.3f} P={p_term:+.1f} I={i_term:+.1f} D={d_term:+.1f} raw={raw_correction:+.1f} smooth={correction:+.1f} integral={self.integral:+.2f}")
 
         return correction
 
@@ -194,24 +195,31 @@ class LineFollower:
         Positive correction → line is to the right → speed up left, slow right → turn right.
         Negative correction → line is to the left → speed up right, slow left → turn left.
         """
+        pre_invert = correction
         if Config.INVERT_MOTOR_CORRECTION:
             correction = -correction
 
         left_speed = self.base_speed + correction
         right_speed = self.base_speed - correction
 
+        # Remember pre-clamp values for logging
+        left_raw = left_speed
+        right_raw = right_speed
+
         # Clamp to valid range but enforce a minimum so neither wheel stalls
         left_speed = max(self.min_motor_speed, min(100, left_speed))
         right_speed = max(self.min_motor_speed, min(100, right_speed))
 
-        if Config.DEBUG and (self._iteration % self._debug_every == 0):
-            if abs(correction) < 2:
-                direction = "STRAIGHT"
-            elif correction > 0:
-                direction = "RIGHT"
-            else:
-                direction = "LEFT"
-            print(f"[LineFollower] {direction} | L={left_speed:.0f} R={right_speed:.0f} | corr={correction:.1f}")
+        if abs(correction) < 2:
+            direction = "STRAIGHT"
+        elif correction > 0:
+            direction = "RIGHT"
+        else:
+            direction = "LEFT"
+
+        # LOG: always print motor output
+        inv_str = f" (inverted from {pre_invert:+.1f})" if Config.INVERT_MOTOR_CORRECTION else ""
+        print(f"[LF:MOT ] t={self._ts()} i={self._iteration} {direction} corr={correction:+.1f}{inv_str} L={left_speed:.0f}({left_raw:.0f}) R={right_speed:.0f}({right_raw:.0f}) base={self.base_speed}")
 
         self.motors.set_motor_speeds(left_speed, right_speed)
 
@@ -239,24 +247,26 @@ class LineFollower:
         # ── Phase 1: creep forward ──────────────────────────────
         if count <= 8:
             if count == 1:
-                print("[LineFollower] ⚠ LINE LOST — Phase 1: creep forward")
                 # Decide search direction from last known error
                 if self.last_known_error < -0.3:
                     self.search_direction = 'left'
                 elif self.last_known_error > 0.3:
                     self.search_direction = 'right'
                 else:
-                    # Default: try the side where line was last seen, or right
                     self.search_direction = self.last_direction if self.last_direction != 'center' else 'right'
+                print(f"[LF:LOST] t={self._ts()} i={self._iteration} ⚠ LINE LOST — Phase 1: creep forward | last_err={self.last_known_error:+.2f} search_dir={self.search_direction}")
 
-            self.motors.forward(self.base_speed * 0.4)
+            fwd_speed = self.base_speed * 0.4
+            print(f"[LF:LOST] t={self._ts()} i={self._iteration} phase=1 count={count}/8 action=FORWARD speed={fwd_speed:.0f}")
+            self.motors.forward(fwd_speed)
             return True
 
         # ── Phase 2: rotate toward last-known side ──────────────
         if count <= 35:
             if count == 9:
-                print(f"[LineFollower] Phase 2: rotate {self.search_direction} (last error={self.last_known_error:.1f})")
+                print(f"[LF:LOST] t={self._ts()} i={self._iteration} Phase 2: rotate {self.search_direction} | last_err={self.last_known_error:+.2f}")
 
+            print(f"[LF:LOST] t={self._ts()} i={self._iteration} phase=2 count={count}/35 action=TURN_{self.search_direction.upper()} speed={search_speed}")
             if self.search_direction == 'left':
                 self.motors.turn_left(search_speed)
             else:
@@ -265,10 +275,11 @@ class LineFollower:
 
         # ── Phase 3: rotate opposite direction (wider sweep) ────
         if count <= 70:
+            opposite = 'right' if self.search_direction == 'left' else 'left'
             if count == 36:
-                opposite = 'right' if self.search_direction == 'left' else 'left'
-                print(f"[LineFollower] Phase 3: counter-rotate {opposite}")
+                print(f"[LF:LOST] t={self._ts()} i={self._iteration} Phase 3: counter-rotate {opposite}")
 
+            print(f"[LF:LOST] t={self._ts()} i={self._iteration} phase=3 count={count}/70 action=TURN_{opposite.upper()} speed={search_speed}")
             if self.search_direction == 'left':
                 self.motors.turn_right(search_speed)
             else:
@@ -276,7 +287,7 @@ class LineFollower:
             return True
 
         # ── Phase 4: give up ────────────────────────────────────
-        print("[LineFollower] ❌ RECOVERY FAILED — line not found")
+        print(f"[LF:LOST] t={self._ts()} i={self._iteration} ❌ RECOVERY FAILED — line not found after {count} iterations")
         self.motors.stop()
         return False
 
@@ -302,7 +313,7 @@ class LineFollower:
 
         # ── Line found ──────────────────────────────────────────
         if self.line_lost_counter > 0:
-            print(f"[LineFollower] ✓ Line reacquired after {self.line_lost_counter} iterations")
+            print(f"[LF:RECV] t={self._ts()} i={self._iteration} ✓ Line reacquired after {self.line_lost_counter} lost iterations")
         self.line_lost_counter = 0
 
         # Remember last known error for recovery direction
@@ -336,15 +347,15 @@ class LineFollower:
         self.last_known_error = 0.0
         self.last_direction = 'center'
         self._iteration = 0
-        if Config.DEBUG:
-            print("[LineFollower] Controller reset")
+        self._start_time = time.time()
+        print(f"[LF:RST ] t=0.000 Controller reset")
 
     def set_speed(self, speed):
         """Update base speed for line following"""
+        old = self.base_speed
         self.base_speed = max(20, min(100, speed))
         self.min_motor_speed = max(15, self.base_speed * 0.25)
-        if Config.DEBUG:
-            print(f"[LineFollower] Base speed set to {self.base_speed}")
+        print(f"[LF:CFG ] t={self._ts()} speed {old}->{self.base_speed} min_motor={self.min_motor_speed}")
 
     def set_pid_gains(self, kp=None, ki=None, kd=None):
         """Update PID gains on the fly"""
@@ -354,5 +365,4 @@ class LineFollower:
             self.ki = ki
         if kd is not None:
             self.kd = kd
-        if Config.DEBUG:
-            print(f"[LineFollower] PID gains updated: Kp={self.kp}, Ki={self.ki}, Kd={self.kd}")
+        print(f"[LF:CFG ] t={self._ts()} PID updated: Kp={self.kp} Ki={self.ki} Kd={self.kd}")
