@@ -1,10 +1,12 @@
 """
-Line Following Module using PID Controller
+Line Following Module — PID or If-Condition Controller
 Autonomous line tracking using 5-sensor IR array
 
-Robust implementation with:
-- Weighted continuous error calculation
-- PID with anti-windup and derivative filtering
+Switchable via LINE_FOLLOW_MODE env variable:
+  'pid' — Weighted continuous error + PID with anti-windup and derivative filtering
+  'if'  — Simple if-condition pattern matching on sensor states
+
+Shared features for both modes:
 - Minimum motor speed to prevent stalling
 - Smart multi-phase line recovery
 - Intersection detection
@@ -14,7 +16,7 @@ import time
 from config import Config
 
 
-# Sensor position weights for error calculation
+# Sensor position weights for error calculation (PID mode)
 SENSOR_WEIGHTS = {
     'left2': -2.0,
     'left1': -1.0,
@@ -26,8 +28,12 @@ SENSOR_WEIGHTS = {
 
 class LineFollower:
     """
-    PID-based line following controller
-    Uses 5 IR sensors to maintain position on black line
+    Line following controller with switchable algorithm.
+    Uses 5 IR sensors to maintain position on black line.
+
+    Mode is chosen by Config.LINE_FOLLOW_MODE:
+        'pid' — classic PID  (default)
+        'if'  — simple if-condition branching
     """
 
     def __init__(self, motors, sensors):
@@ -41,7 +47,10 @@ class LineFollower:
         self.motors = motors
         self.sensors = sensors
 
-        # PID controller parameters
+        # Active mode
+        self.mode = Config.LINE_FOLLOW_MODE  # 'pid' or 'if'
+
+        # PID controller parameters (used only in pid mode)
         self.kp = Config.LINE_FOLLOW_KP
         self.ki = Config.LINE_FOLLOW_KI
         self.kd = Config.LINE_FOLLOW_KD
@@ -57,6 +66,10 @@ class LineFollower:
         # Minimum motor speed so neither wheel fully stalls during turns
         self.min_motor_speed = max(15, self.base_speed * 0.25)
 
+        # If-condition mode speed settings
+        self.if_slight_speed = Config.LINE_FOLLOW_IF_SLIGHT_SPEED
+        self.if_sharp_speed = Config.LINE_FOLLOW_IF_SHARP_SPEED
+
         # Line lost handling
         self.line_lost_counter = 0
         self.last_known_error = 0.0  # continuous error value when line was last seen
@@ -69,7 +82,11 @@ class LineFollower:
         self._iteration = 0
         self._start_time = time.time()
 
-        print(f"[LF:INIT] t=0.000 PID Kp={self.kp} Ki={self.ki} Kd={self.kd}")
+        print(f"[LF:INIT] t=0.000 MODE={self.mode.upper()}")
+        if self.mode == 'pid':
+            print(f"[LF:INIT] t=0.000 PID Kp={self.kp} Ki={self.ki} Kd={self.kd}")
+        else:
+            print(f"[LF:INIT] t=0.000 IF slight_speed={self.if_slight_speed} sharp_speed={self.if_sharp_speed}")
         print(f"[LF:INIT] t=0.000 base_speed={self.base_speed} min_motor={self.min_motor_speed}")
         print(f"[LF:INIT] t=0.000 INVERT_MOTOR_CORRECTION={Config.INVERT_MOTOR_CORRECTION}")
         print(f"[LF:INIT] t=0.000 INVERT_LINE_SENSORS={Config.INVERT_LINE_SENSORS}")
@@ -132,6 +149,108 @@ class LineFollower:
             sensors = self._read_sensors()
         active = sum(1 for v in sensors.values() if v == 0)
         return active >= 4
+
+    # ------------------------------------------------------------------
+    # If-condition controller
+    # ------------------------------------------------------------------
+
+    def calculate_if_correction(self, sensors):
+        """
+        Determine motor speeds using simple if-condition logic based on
+        which sensors see the line (value == 0 after inversion).
+
+        Sensor layout (robot front view):
+            left2  left1  center  right1  right2
+
+        Returns:
+            (left_speed, right_speed) tuple
+        """
+        l2 = sensors['left2'] == 0
+        l1 = sensors['left1'] == 0
+        c  = sensors['center'] == 0
+        r1 = sensors['right1'] == 0
+        r2 = sensors['right2'] == 0
+
+        base = self.base_speed
+        slight = self.if_slight_speed
+        sharp = self.if_sharp_speed
+
+        # --- Straight / centred patterns ---
+        if c and not l2 and not l1 and not r1 and not r2:
+            # Only centre → go straight
+            action = "STRAIGHT (C)"
+            left, right = base, base
+
+        elif c and l1 and not l2 and not r1 and not r2:
+            # Centre + left1 → slight left drift
+            action = "SLIGHT_LEFT (C+L1)"
+            left, right = slight, base
+
+        elif c and r1 and not l1 and not l2 and not r2:
+            # Centre + right1 → slight right drift
+            action = "SLIGHT_RIGHT (C+R1)"
+            left, right = base, slight
+
+        elif c and l1 and r1:
+            # Wide line or intersection area → go straight
+            action = "STRAIGHT (L1+C+R1)"
+            left, right = base, base
+
+        # --- Moderate turns ---
+        elif l1 and not c and not l2 and not r1 and not r2:
+            # Only left1 → moderate left
+            action = "LEFT (L1)"
+            left, right = slight, base
+
+        elif r1 and not c and not l1 and not l2 and not r2:
+            # Only right1 → moderate right
+            action = "RIGHT (R1)"
+            left, right = base, slight
+
+        # --- Sharp turns ---
+        elif l2 and not r1 and not r2:
+            # Far left sensor(s) active → sharp left
+            action = "SHARP_LEFT (L2)"
+            left, right = sharp, base
+
+        elif r2 and not l1 and not l2:
+            # Far right sensor(s) active → sharp right
+            action = "SHARP_RIGHT (R2)"
+            left, right = base, sharp
+
+        elif l2 and l1 and not r1 and not r2:
+            # Left2 + left1 (no centre) → sharp left
+            action = "SHARP_LEFT (L2+L1)"
+            left, right = sharp, base
+
+        elif r2 and r1 and not l1 and not l2:
+            # Right2 + right1 (no centre) → sharp right
+            action = "SHARP_RIGHT (R2+R1)"
+            left, right = base, sharp
+
+        # --- All sensors active (intersection) ---
+        elif l2 and l1 and c and r1 and r2:
+            action = "INTERSECTION (ALL)"
+            left, right = base, base
+
+        # --- Fallback: go straight at reduced speed ---
+        else:
+            active = [n for n in ('left2', 'left1', 'center', 'right1', 'right2')
+                      if sensors[n] == 0]
+            action = f"FALLBACK ({'+'.join(active) if active else 'NONE'})"
+            left, right = base, base
+
+        # Apply motor correction inversion
+        if Config.INVERT_MOTOR_CORRECTION:
+            left, right = right, left
+            action += " [INV]"
+
+        # Enforce minimum speed
+        left = max(self.min_motor_speed, min(100, left))
+        right = max(self.min_motor_speed, min(100, right))
+
+        print(f"[LF:IF  ] t={self._ts()} i={self._iteration} {action} L={left:.0f} R={right:.0f}")
+        return left, right
 
     # ------------------------------------------------------------------
     # PID controller
@@ -299,11 +418,20 @@ class LineFollower:
         """
         Main line following update — call this in a loop.
 
+        Dispatches to PID or if-condition logic based on self.mode.
+
         Returns:
             bool: True if following or recovering, False if recovery failed.
         """
         self._iteration += 1
 
+        if self.mode == 'if':
+            return self._update_if()
+        else:
+            return self._update_pid()
+
+    def _update_pid(self):
+        """PID-based line following update."""
         # Read error
         error = self.get_line_error()
 
@@ -330,6 +458,45 @@ class LineFollower:
 
         # Drive
         self.apply_correction(correction)
+
+        return True
+
+    def _update_if(self):
+        """If-condition-based line following update."""
+        sensors = self._read_sensors()
+
+        # Log sensor state
+        s = sensors
+        sensor_bits = f"{s['left2']}{s['left1']}{s['center']}{s['right1']}{s['right2']}"
+        active_count = sum(1 for v in sensors.values() if v == 0)
+        active_names = [n for n, v in sensors.items() if v == 0]
+
+        print(f"[LF:SENS] t={self._ts()} i={self._iteration} bits={sensor_bits} active={active_count} names={active_names}")
+
+        if active_count == 0:
+            # No sensors see the line → lost
+            print(f"[LF:SENS] t={self._ts()} i={self._iteration} LOST")
+            return self.handle_line_lost()
+
+        # ── Line found ──────────────────────────────────────────
+        if self.line_lost_counter > 0:
+            print(f"[LF:RECV] t={self._ts()} i={self._iteration} ✓ Line reacquired after {self.line_lost_counter} lost iterations")
+        self.line_lost_counter = 0
+
+        # Track last direction for recovery
+        if sensors['left2'] == 0 or sensors['left1'] == 0:
+            self.last_direction = 'left'
+            self.last_known_error = -1.0
+        elif sensors['right2'] == 0 or sensors['right1'] == 0:
+            self.last_direction = 'right'
+            self.last_known_error = 1.0
+        else:
+            self.last_direction = 'center'
+            self.last_known_error = 0.0
+
+        # Calculate and apply motor speeds
+        left_speed, right_speed = self.calculate_if_correction(sensors)
+        self.motors.set_motor_speeds(left_speed, right_speed)
 
         return True
 

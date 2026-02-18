@@ -59,6 +59,7 @@ class Config:
     TURN_MOTOR_SPEED = int(os.getenv('TURN_MOTOR_SPEED', '60'))
     
     # Line Following Configuration
+    LINE_FOLLOW_MODE = os.getenv('LINE_FOLLOW_MODE', 'pid').lower()  # 'pid' or 'if'
     LINE_FOLLOW_SPEED = int(os.getenv('LINE_FOLLOW_SPEED', '50'))
     LINE_FOLLOW_KP = float(os.getenv('LINE_FOLLOW_KP', '12.0'))  # P gain (error range is -2 to +2)
     LINE_FOLLOW_KI = float(os.getenv('LINE_FOLLOW_KI', '0.1'))   # Small I to correct steady-state offset
@@ -67,6 +68,9 @@ class Config:
     LINE_FOLLOW_UPDATE_RATE = float(os.getenv('LINE_FOLLOW_UPDATE_RATE', '0.05'))  # 20Hz
     INVERT_LINE_SENSORS = os.getenv('INVERT_LINE_SENSORS', 'False').lower() in ('true', '1', 'yes')  # True if sensors return 1 for black
     INVERT_MOTOR_CORRECTION = os.getenv('INVERT_MOTOR_CORRECTION', 'False').lower() in ('true', '1', 'yes')  # True if turning wrong way
+    # If-condition mode speed settings (only used when LINE_FOLLOW_MODE=if)
+    LINE_FOLLOW_IF_SLIGHT_SPEED = int(os.getenv('LINE_FOLLOW_IF_SLIGHT_SPEED', '35'))   # Inner wheel speed for gentle turns
+    LINE_FOLLOW_IF_SHARP_SPEED = int(os.getenv('LINE_FOLLOW_IF_SHARP_SPEED', '20'))     # Inner wheel speed for sharp turns
     
     # Debug Mode
     DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
