@@ -22,6 +22,9 @@ class ConnectionManager:
         self.robot_sockets[robot_id] = websocket
         print(f"[ROBOT] Connected: {robot_id}")
         self.console_sockets.setdefault(robot_id, [])
+        
+        # Notify all consoles that robot is now online
+        await self.notify_robot_status(robot_id, True)
 
     async def connect_console(self, robot_id: str, websocket: WebSocket):
         """Connect a console WebSocket."""
@@ -29,10 +32,13 @@ class ConnectionManager:
         self.console_sockets.setdefault(robot_id, []).append(websocket)
         print(f"[CONSOLE] Connected for robot: {robot_id}")
 
-    def disconnect_robot(self, robot_id: str):
+    async def disconnect_robot(self, robot_id: str):
         """Disconnect a robot WebSocket."""
         self.robot_sockets.pop(robot_id, None)
         print(f"[ROBOT] Disconnected: {robot_id}")
+        
+        # Notify all consoles that robot is now offline
+        await self.notify_robot_status(robot_id, False)
 
     def disconnect_console(self, robot_id: str, websocket: WebSocket):
         """Disconnect a console WebSocket."""
@@ -94,3 +100,15 @@ class ConnectionManager:
             robot_id: self.get_robot_status(robot_id)
             for robot_id in set(list(self.robot_sockets.keys()) + list(self.console_sockets.keys()))
         }
+    
+    async def notify_robot_status(self, robot_id: str, is_online: bool):
+        """Notify all consoles about robot status change."""
+        status_msg = MessageEnvelope(
+            type="robot_status",
+            robotId=robot_id,
+            payload={
+                "isOnline": is_online,
+                "source": "robot_connection_change"
+            }
+        )
+        await self.broadcast_to_consoles(robot_id, status_msg)

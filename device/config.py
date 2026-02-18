@@ -59,10 +59,10 @@ class Config:
     TURN_MOTOR_SPEED = int(os.getenv('TURN_MOTOR_SPEED', '60'))
     
     # Line Following Configuration
-    LINE_FOLLOW_SPEED = int(os.getenv('LINE_FOLLOW_SPEED', '50'))
-    LINE_FOLLOW_KP = float(os.getenv('LINE_FOLLOW_KP', '12.0'))  # P gain (error range is -2 to +2)
-    LINE_FOLLOW_KI = float(os.getenv('LINE_FOLLOW_KI', '0.1'))   # Small I to correct steady-state offset
-    LINE_FOLLOW_KD = float(os.getenv('LINE_FOLLOW_KD', '4.0'))   # D gain for damping oscillation
+    LINE_FOLLOW_SPEED = int(os.getenv('LINE_FOLLOW_SPEED', '40'))
+    LINE_FOLLOW_KP = float(os.getenv('LINE_FOLLOW_KP', '18.0'))  # P gain (error range is -2 to +2, correction applied to 0-100 speed)
+    LINE_FOLLOW_KI = float(os.getenv('LINE_FOLLOW_KI', '0.0'))   # Zero I — integral causes windup/overshoot on curves
+    LINE_FOLLOW_KD = float(os.getenv('LINE_FOLLOW_KD', '6.0'))   # D gain for damping oscillation
     LINE_LOST_MAX_COUNT = int(os.getenv('LINE_LOST_MAX_COUNT', '20'))
     LINE_FOLLOW_UPDATE_RATE = float(os.getenv('LINE_FOLLOW_UPDATE_RATE', '0.05'))  # 20Hz
     INVERT_LINE_SENSORS = os.getenv('INVERT_LINE_SENSORS', 'False').lower() in ('true', '1', 'yes')  # True if sensors return 1 for black

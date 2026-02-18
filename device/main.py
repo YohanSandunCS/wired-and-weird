@@ -12,6 +12,7 @@ This is the entry point for Stage 1:
 import asyncio
 import signal
 import sys
+import time
 import RPi.GPIO as GPIO
 from datetime import datetime
 
@@ -195,6 +196,11 @@ class MediRunnerRobot:
                 if Config.DEBUG:
                     print(f"[Main] ✓ Switched to AUTO mode")
             
+            elif command == 'panoramic':
+                asyncio.create_task(self.capture_panoramic())
+                if Config.DEBUG:
+                    print(f"[Main] ✓ Panoramic capture started")
+            
             # Motor commands (only in manual mode)
             elif self.mode != 'manual':
                 if Config.DEBUG:
@@ -299,6 +305,96 @@ class MediRunnerRobot:
                 self.motors.stop()
             print("[Main] Manual mode activated")
     
+    async def capture_panoramic(self):
+        """
+        Capture a 360° panoramic image by rotating the robot in steps,
+        capturing a frame at each step, stitching them together, and
+        sending the result back to the gateway/frontend.
+        """
+        NUM_STEPS = 8                      # 8 x 45° = 360°
+        ROTATE_DURATION = 0.35             # seconds to rotate per step (tune on hardware)
+        SETTLE_DURATION = 0.2             # seconds to wait after stopping before capture
+        TURN_SPEED = getattr(Config, 'TURN_MOTOR_SPEED', 60)
+
+        print("[Main] 📸 Starting panoramic capture...")
+
+        if self.buzzer:
+            self.buzzer.beep(0.05)
+
+        # Pause autonomous driving while capturing
+        was_auto = self.auto_mode_active
+        if was_auto:
+            self.auto_mode_active = False
+        if self.motors:
+            self.motors.stop()
+
+        capture_time = int(time.time() * 1000)  # ms timestamp
+        frames_b64 = []
+
+        try:
+            for step in range(NUM_STEPS):
+                # Rotate right one step
+                if self.motors:
+                    self.motors.turn_right(TURN_SPEED)
+                    await asyncio.sleep(ROTATE_DURATION)
+                    self.motors.stop()
+                    await asyncio.sleep(SETTLE_DURATION)
+
+                # Capture frame
+                if self.camera:
+                    frame = self.camera.capture_frame_base64()
+                    if frame:
+                        frames_b64.append(frame)
+                        if Config.DEBUG:
+                            print(f"[Main] 📷 Panoramic frame {step + 1}/{NUM_STEPS} captured")
+                else:
+                    if Config.DEBUG:
+                        print(f"[Main] ⚠ Camera not available for panoramic step {step + 1}")
+
+            # Stitch frames using camera helper (re-encode joined images)
+            if frames_b64 and self.camera:
+                import io, base64
+                from PIL import Image
+
+                pil_frames = []
+                for b64 in frames_b64:
+                    raw = base64.b64decode(b64)
+                    img = Image.open(io.BytesIO(raw)).convert('RGB')
+                    pil_frames.append(img)
+
+                if pil_frames:
+                    fw, fh = pil_frames[0].size
+                    panoramic = Image.new('RGB', (fw * len(pil_frames), fh))
+                    for idx, f in enumerate(pil_frames):
+                        panoramic.paste(f, (idx * fw, 0))
+
+                    buf = io.BytesIO()
+                    panoramic.save(buf, format='JPEG', quality=getattr(Config, 'CAMERA_QUALITY', 75))
+                    buf.seek(0)
+                    panoramic_b64 = base64.b64encode(buf.read()).decode('utf-8')
+
+                    total_w, total_h = panoramic.size
+                    print(f"[Main] ✓ Panoramic stitched: {total_w}x{total_h} from {len(pil_frames)} frames")
+
+                    if self.ws_client:
+                        await self.ws_client.send_panoramic_image(
+                            panoramic_b64, total_w, total_h, capture_time
+                        )
+                        print("[Main] ✓ Panoramic image sent")
+                    if self.buzzer:
+                        self.buzzer.beep_pattern([(0.05, 0.05), (0.05, 0)])
+                else:
+                    print("[Main] ⚠ No valid frames to stitch")
+            else:
+                print("[Main] ⚠ Insufficient frames for panoramic stitching")
+
+        except Exception as e:
+            print(f"[Main] Panoramic capture error: {e}")
+        finally:
+            # Restore previous auto mode
+            if was_auto:
+                self.auto_mode_active = True
+
     async def send_acknowledgment(self, command_id):
         """Send command acknowledgment"""
         if self.ws_client and command_id:
@@ -316,20 +412,35 @@ class MediRunnerRobot:
         print("[Main] Starting telemetry loop")
         
         telemetry_count = 0
+        start_time = time.time()
         
         while self.running:
             try:
                 if self.ws_client and self.ws_client.connected:
                     # Read sensor data if sensors are enabled
                     sensor_data = {}
+                    line_position = None
+                    proximity = False
+                    bump = False
                     if self.sensors:
                         sensor_data = self.sensors.read_all()
+                        line_position = self.sensors.get_line_position()
+                        proximity = sensor_data.get('proximity', False)
+                        bump = sensor_data.get('bump', False)
+                    
+                    # Motor speed
+                    speed = self.motors.current_speed if self.motors else 0
                     
                     # Build telemetry payload
                     telemetry = {
                         'sensors': sensor_data,
                         'mode': self.mode,
                         'auto_mode_active': self.auto_mode_active,
+                        'speed': speed,
+                        'line_position': line_position,
+                        'proximity': proximity,
+                        'bump': bump,
+                        'uptime_seconds': int(time.time() - start_time),
                         'timestamp': datetime.now().isoformat()
                     }
                     
@@ -339,7 +450,7 @@ class MediRunnerRobot:
                     # Only print debug every 10 telemetry messages to avoid spam
                     telemetry_count += 1
                     if Config.DEBUG and telemetry_count % 10 == 0:
-                        print(f"[Main] 📊 Telemetry #{telemetry_count}: mode={self.mode}, auto={self.auto_mode_active}")
+                        print(f"[Main] 📊 Telemetry #{telemetry_count}: mode={self.mode}, speed={speed}, line={line_position}")
                 
                 await asyncio.sleep(Config.TELEMETRY_INTERVAL)
                 

@@ -54,8 +54,8 @@ class LineFollower:
 
         # Line following speed
         self.base_speed = Config.LINE_FOLLOW_SPEED
-        # Minimum motor speed so neither wheel fully stalls during turns
-        self.min_motor_speed = max(15, self.base_speed * 0.25)
+        # Minimum motor speed — keep low enough that inner wheel can actually slow for steering
+        self.min_motor_speed = max(10, self.base_speed * 0.15)
 
         # Line lost handling
         self.line_lost_counter = 0
@@ -169,8 +169,8 @@ class LineFollower:
 
         correction = p_term + i_term + d_term
 
-        # Smooth correction to avoid sudden motor jerks
-        smooth_factor = 0.3
+        # Smooth correction slightly — too much smoothing causes the robot to lag and overshoot
+        smooth_factor = 0.15
         raw_correction = correction
         correction = (1 - smooth_factor) * correction + smooth_factor * self.last_correction
 
@@ -206,7 +206,8 @@ class LineFollower:
         left_raw = left_speed
         right_raw = right_speed
 
-        # Clamp to valid range but enforce a minimum so neither wheel stalls
+        # Clamp to valid range — allow inner wheel to go as low as min_motor_speed for sharp turns
+        # Do NOT clamp both wheels up equally; that kills steering authority
         left_speed = max(self.min_motor_speed, min(100, left_speed))
         right_speed = max(self.min_motor_speed, min(100, right_speed))
 
@@ -354,7 +355,7 @@ class LineFollower:
         """Update base speed for line following"""
         old = self.base_speed
         self.base_speed = max(20, min(100, speed))
-        self.min_motor_speed = max(15, self.base_speed * 0.25)
+        self.min_motor_speed = max(10, self.base_speed * 0.15)
         print(f"[LF:CFG ] t={self._ts()} speed {old}->{self.base_speed} min_motor={self.min_motor_speed}")
 
     def set_pid_gains(self, kp=None, ki=None, kd=None):

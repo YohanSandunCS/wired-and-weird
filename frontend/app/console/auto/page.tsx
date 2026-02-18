@@ -560,6 +560,48 @@ export default function RobotAutonomousPage() {
                     )}
                   </span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Battery</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {robot.battery !== undefined ? `${robot.battery}%` : '--'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Speed</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {robot.speed !== undefined ? `${robot.speed}%` : '--'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Line</span>
+                  <span className={`text-sm font-medium capitalize ${
+                    robot.linePosition === 'lost' ? 'text-red-600' :
+                    robot.linePosition === 'center' ? 'text-green-600' :
+                    robot.linePosition ? 'text-yellow-600' : 'text-gray-400'
+                  }`}>
+                    {robot.linePosition ?? '--'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Obstacle</span>
+                  <span className={`text-sm font-medium ${robot.proximity ? 'text-red-600' : 'text-green-600'}`}>
+                    {robot.proximity === undefined ? '--' : robot.proximity ? '🚧 Detected' : '✓ Clear'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Bump</span>
+                  <span className={`text-sm font-medium ${robot.bump ? 'text-red-600' : 'text-green-600'}`}>
+                    {robot.bump === undefined ? '--' : robot.bump ? '💥 Hit' : '✓ None'}
+                  </span>
+                </div>
+                {robot.uptimeSeconds !== undefined && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Uptime</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {Math.floor(robot.uptimeSeconds / 60)}m {robot.uptimeSeconds % 60}s
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Panoramic Capture Button */}

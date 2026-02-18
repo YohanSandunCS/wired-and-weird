@@ -103,6 +103,28 @@ class WebSocketClient:
             }
         }
         await self.send_message(message)
+
+    async def send_panoramic_image(self, frame_data, width, height, capture_time):
+        """
+        Send a stitched panoramic image to gateway/frontend.
+        Args:
+            frame_data: Base64-encoded JPEG string
+            width: Image width in pixels
+            height: Image height in pixels
+            capture_time: Unix timestamp (ms) when capture started
+        """
+        message = {
+            'type': 'panoramic_image',
+            'payload': {
+                'encoding': 'base64',
+                'mime': 'image/jpeg',
+                'data': frame_data,
+                'width': width,
+                'height': height,
+                'captureTime': capture_time,
+            }
+        }
+        await self.send_message(message)
     
     async def receive_messages(self):
         """Listen for incoming messages from gateway"""

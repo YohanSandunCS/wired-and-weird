@@ -36,6 +36,15 @@ interface AppState {
   setActiveRobot: (robotId: string | null) => void
   updateRobotStatus: (robotId: string, isOnline: boolean) => void
   updateRobotBattery: (robotId: string, battery: number) => void
+  updateRobotTelemetry: (robotId: string, telemetry: {
+    battery?: number;
+    speed?: number;
+    linePosition?: string | null;
+    proximity?: boolean;
+    bump?: boolean;
+    uptimeSeconds?: number;
+    robotMode?: string;
+  }) => void
   setWsConnected: (connected: boolean) => void
 }
 
@@ -221,6 +230,41 @@ const useAppStore = create<AppState>()(
         }))
         
         // Sync current team data
+        const store = get()
+        store._syncCurrentTeamData()
+      },
+
+      updateRobotTelemetry: (robotId: string, telemetry) => {
+        const { teamSession, teamRobots } = get()
+        if (!teamSession.loggedIn || !teamSession.teamCode) return
+
+        const teamCode = teamSession.teamCode
+        const currentTeamData = teamRobots[teamCode] || { robots: [], activeRobotId: null }
+
+        set((state) => ({
+          teamRobots: {
+            ...state.teamRobots,
+            [teamCode]: {
+              ...currentTeamData,
+              robots: currentTeamData.robots.map(robot =>
+                robot.robotId === robotId
+                  ? {
+                      ...robot,
+                      ...(telemetry.battery !== undefined && { battery: telemetry.battery }),
+                      ...(telemetry.speed !== undefined && { speed: telemetry.speed }),
+                      ...(telemetry.linePosition !== undefined && { linePosition: telemetry.linePosition }),
+                      ...(telemetry.proximity !== undefined && { proximity: telemetry.proximity }),
+                      ...(telemetry.bump !== undefined && { bump: telemetry.bump }),
+                      ...(telemetry.uptimeSeconds !== undefined && { uptimeSeconds: telemetry.uptimeSeconds }),
+                      ...(telemetry.robotMode !== undefined && { robotMode: telemetry.robotMode }),
+                      lastTelemetryUpdate: Date.now(),
+                    }
+                  : robot
+              ),
+            },
+          },
+        }))
+
         const store = get()
         store._syncCurrentTeamData()
       },

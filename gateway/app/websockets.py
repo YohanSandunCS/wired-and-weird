@@ -43,9 +43,15 @@ def create_websocket_router(manager: ConnectionManager) -> APIRouter:
         try:
             while True:
                 try:
-                    # Use timeout to prevent hanging indefinitely during debugging
-                    raw = await asyncio.wait_for(websocket.receive_text(), timeout=120.0)
-                    print(f"🤖 [MSG] Robot {robotId}: {raw[:100]}{'...' if len(raw) > 100 else ''}")
+                    # Increased timeout for large messages like panoramic images (240 seconds)
+                    raw = await asyncio.wait_for(websocket.receive_text(), timeout=240.0)
+                    
+                    # Log message size for debugging large messages
+                    msg_size_kb = len(raw) / 1024
+                    if msg_size_kb > 100:
+                        print(f"🤖 [LARGE MSG] Robot {robotId}: {msg_size_kb:.1f} KB")
+                    else:
+                        print(f"🤖 [MSG] Robot {robotId}: {raw[:100]}{'...' if len(raw) > 100 else ''}")
                     
                     try:
                         msg = MessageEnvelope.model_validate_json(raw)
@@ -69,7 +75,7 @@ def create_websocket_router(manager: ConnectionManager) -> APIRouter:
                         print(f"🤖 [UNKNOWN] Robot {robotId} type: {msg.type}")
 
                 except asyncio.TimeoutError:
-                    print(f"🤖 [TIMEOUT] Robot {robotId} - no message for 120s, checking connection...")
+                    print(f"🤖 [TIMEOUT] Robot {robotId} - no message for 240s, checking connection...")
                     try:
                         # Send a simple ping message to check if connection is alive
                         ping_msg = MessageEnvelope(
@@ -86,10 +92,10 @@ def create_websocket_router(manager: ConnectionManager) -> APIRouter:
 
         except WebSocketDisconnect as e:
             print(f"🤖 [DISCONNECT] Robot {robotId} - code: {e.code}")
-            manager.disconnect_robot(robotId)
+            await manager.disconnect_robot(robotId)
         except Exception as e:
             print(f"🤖 [ERROR] Robot {robotId} WebSocket error: {type(e).__name__}: {e}")
-            manager.disconnect_robot(robotId)
+            await manager.disconnect_robot(robotId)
         finally:
             keep_alive_task.cancel()
 
@@ -123,6 +129,22 @@ def create_websocket_router(manager: ConnectionManager) -> APIRouter:
                     break
 
         keep_alive_task = asyncio.create_task(keep_alive())
+
+        # 🔹 Send robot status immediately when console connects
+        try:
+            robot_status = manager.get_robot_status(robotId)
+            status_msg = MessageEnvelope(
+                type="robot_status",
+                robotId=robotId,
+                payload={
+                    "isOnline": robot_status["robot_connected"],
+                    "source": "console_connect"
+                }
+            )
+            await websocket.send_text(status_msg.model_dump_json())
+            print(f"🖥️ [STATUS] Sent robot status to console: {robotId} online={robot_status['robot_connected']}")
+        except Exception as e:
+            print(f"🖥️ [STATUS] Failed to send status for {robotId}: {e}")
 
         # 🔹 Handshake: try ping robot as soon as console connects
         try:

@@ -31,7 +31,7 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
   const [latestPanoramicImage, setLatestPanoramicImage] = useState<PanoramicImageMessage | null>(null)
   const pendingPingsRef = useRef<Map<number, number>>(new Map())
   
-  const { updateRobotStatus, updateRobotBattery, setWsConnected } = useAppStore()
+  const { updateRobotStatus, updateRobotBattery, updateRobotTelemetry, setWsConnected } = useAppStore()
 
   // Store state setters in refs so they can be accessed from the global message handler
   const setLatestVisionFrameRef = useRef(setLatestVisionFrame)
@@ -68,7 +68,12 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
         const data = JSON.parse(event.data)
         setLastMessageRef.current(data)
         
-        if (data.type === 'pong' && data.robotId === robotId) {
+        if (data.type === 'robot_status' && data.robotId === robotId) {
+          // Handle robot status notification from gateway
+          const isOnline = data.payload?.isOnline || false
+          updateRobotStatus(robotId, isOnline)
+          addLogRef.current?.(`Robot status: ${isOnline ? 'Online' : 'Offline'}`, isOnline ? 'success' : 'info')
+        } else if (data.type === 'pong' && data.robotId === robotId) {
           // Robot is online - it responded to ping
           updateRobotStatus(robotId, true)
           const sentTime = pendingPingsRef.current.get(data.timestamp)
@@ -82,10 +87,23 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
         } else if (data.type === 'telemetry' && data.robotId === robotId) {
           // Handle telemetry data - robot is online
           updateRobotStatus(robotId, true)
-          if (data.payload?.battery !== undefined) {
-            updateRobotBattery(robotId, data.payload.battery)
-            addLogRef.current?.(`Battery: ${data.payload.battery}%`, 'info')
-          }
+          const p = data.payload || {}
+          updateRobotTelemetry(robotId, {
+            battery: p.battery,
+            speed: p.speed,
+            linePosition: p.line_position,
+            proximity: p.proximity,
+            bump: p.bump,
+            uptimeSeconds: p.uptime_seconds,
+            robotMode: p.mode,
+          })
+          const parts: string[] = []
+          if (p.battery !== undefined) parts.push(`🔋 ${p.battery}%`)
+          if (p.speed !== undefined) parts.push(`⚡ ${p.speed}%`)
+          if (p.line_position) parts.push(`📍 ${p.line_position}`)
+          if (p.proximity) parts.push('🚧 obstacle')
+          if (p.bump) parts.push('💥 bump')
+          if (parts.length) addLogRef.current?.(parts.join('  '), 'info')
         } else if (data.type === 'vision_frame' && data.robotId === robotId) {
           // Handle vision frame - robot is online (no logging to reduce spam)
           updateRobotStatus(robotId, true)
@@ -146,10 +164,7 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
         setIsConnected(true)
         setWsConnected(true)
         addLog('WebSocket connected', 'success')
-        // Don't set robot online yet - wait for pong response
-        if (robotId) {
-          updateRobotStatus(robotId, false)
-        }
+        // Gateway will send robot_status message immediately
       }
 
       globalSocket.onclose = (event) => {

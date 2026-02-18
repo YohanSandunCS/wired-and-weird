@@ -37,6 +37,12 @@ export interface Robot {
   name?: string;
   isOnline?: boolean;
   battery?: number;
+  speed?: number;
+  linePosition?: string | null;
+  proximity?: boolean;
+  bump?: boolean;
+  uptimeSeconds?: number;
+  robotMode?: string;
   lastTelemetryUpdate?: number;
 }
 
