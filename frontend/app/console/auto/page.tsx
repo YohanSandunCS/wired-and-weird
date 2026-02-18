@@ -173,7 +173,7 @@ export default function RobotAutonomousPage() {
                 <span className="text-sm text-gray-600">Mode:</span>
                 <button
                   onClick={toggleMode}
-                  disabled={!isConnected || !robot.isOnline}
+                  disabled={!isConnected}
                   className={`px-3 py-1 rounded-full text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                     currentMode === 'manual'
                       ? 'bg-blue-600 text-white'
@@ -335,7 +335,7 @@ export default function RobotAutonomousPage() {
               <div className="mt-6">
                 <button
                   onClick={capturePanoramicImage}
-                  disabled={!isConnected || !robot.isOnline || isPanoramicCapturing}
+                  disabled={!isConnected || isPanoramicCapturing}
                   className="w-full p-3 rounded-md border-2 bg-purple-500 text-white font-medium hover:bg-purple-600 border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isPanoramicCapturing ? '📸 Capturing...' : '📸 360° Panoramic'}
