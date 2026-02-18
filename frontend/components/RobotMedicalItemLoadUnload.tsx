@@ -667,7 +667,7 @@ export default function RobotMedicalItemLoadUnload({
   }
 
   return (
-    <div className="glass-card">
+    <div className="glass-card p-6">
       {/* Top section: Controls/Video on left, Thermo on right */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Left: Loading Controls */}
@@ -696,8 +696,7 @@ export default function RobotMedicalItemLoadUnload({
               type="button"
               onClick={handleStart}
               disabled={isLoading}
-              className={`px-4 py-2 rounded-xl text-white font-semibold flex items-center gap-2 transition disabled:bg-gray-700 disabled:opacity-50
-                ${isLoadMode ? "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-[0_0_12px_rgba(0,229,255,0.2)]" : "bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 shadow-[0_0_12px_rgba(99,102,241,0.2)]"}`}
+              className="neon-btn-success text-sm flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:grayscale disabled:pointer-events-none"
             >
               {isLoadMode ? (
                 // Load Icon: Arrow pointing down into tray
@@ -736,7 +735,7 @@ export default function RobotMedicalItemLoadUnload({
               type="button"
               onClick={handleStop}
               disabled={!isLoading}
-              className={`px-4 py-2 rounded-xl text-white font-semibold flex items-center gap-2 bg-red-600/80 hover:bg-red-600 disabled:bg-gray-700 disabled:opacity-50 transition shadow-[0_0_12px_rgba(239,68,68,0.15)]`}
+              className="neon-btn-danger text-sm flex items-center gap-2"
             >
               <svg
                 className="w-5 h-5"
@@ -1200,7 +1199,7 @@ function ThermoView({
           <span className="text-xs text-gray-400 font-semibold truncate">
             Weight History
           </span>
-          <span className="text-xs font-bold text-orange-400">
+          <span className="text-xs font-bold text-cyan-400">
             {Math.round(totalWeight)}g
           </span>
         </div>
@@ -1252,7 +1251,7 @@ function ThermoView({
 
             <path
               d={weightPath}
-              stroke="#f97316"
+              stroke="#38bdf8"
               strokeWidth={2}
               fill="none"
               strokeLinejoin="round"
