@@ -106,26 +106,63 @@ export default function RobotConnectionPanel() {
         {/* Mode Toggle */}
         {isConnected && (
           <div
-            className="rounded-xl p-4 border border-cyan-500/25"
-            style={{ background: 'rgba(0,229,255,0.04)', boxShadow: '0 0 18px rgba(0,229,255,0.06), inset 0 0 12px rgba(0,229,255,0.03)' }}
+            className="rounded-2xl p-4 border-2 border-cyan-400/40"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(0,229,255,0.07) 0%, rgba(10,14,36,0.9) 60%, rgba(168,85,247,0.07) 100%)",
+              boxShadow:
+                "0 0 28px rgba(0,229,255,0.15), 0 0 0 1px rgba(0,229,255,0.08), inset 0 0 20px rgba(0,229,255,0.04)",
+            }}
           >
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <div className="h-px flex-1 bg-gradient-to-r from-transparent to-cyan-500/30" />
-              <span className="text-xs text-cyan-300 font-bold tracking-[0.2em] uppercase">Select Mode</span>
-              <div className="h-px flex-1 bg-gradient-to-l from-transparent to-cyan-500/30" />
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-400/40 to-cyan-400/60" />
+              <span
+                className="text-xs font-black tracking-[0.25em] uppercase px-2"
+                style={{
+                  color: "rgba(0,229,255,0.95)",
+                  textShadow:
+                    "0 0 10px rgba(0,229,255,0.7), 0 0 20px rgba(0,229,255,0.3)",
+                }}
+              >
+                Select Mode
+              </span>
+              <div className="h-px flex-1 bg-gradient-to-l from-transparent via-cyan-400/40 to-cyan-400/60" />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <button
                 onClick={() =>
                   router.push(`/console/control?robotId=${activeRobotId}`)
                 }
-                className={`flex-1 flex flex-col items-center gap-2 px-3 py-3 rounded-xl text-sm font-semibold border transition-all duration-150 ${
+                className={`flex-1 flex flex-col items-center gap-2 px-3 py-4 rounded-xl text-sm font-bold border-2 transition-all duration-150 ${
                   pathname?.includes("/console/control")
-                    ? "bg-cyan-500/20 border-cyan-400/60 text-cyan-300 shadow-[0_0_14px_rgba(0,229,255,0.25)]"
-                    : "bg-transparent border-cyan-500/20 text-gray-400 hover:bg-cyan-500/10 hover:border-cyan-400/40 hover:text-cyan-300"
+                    ? "border-cyan-400/80 text-cyan-200"
+                    : "border-cyan-500/25 text-gray-500 hover:border-cyan-400/50 hover:text-cyan-300"
                 }`}
+                style={
+                  pathname?.includes("/console/control")
+                    ? {
+                        background: "rgba(0,229,255,0.12)",
+                        boxShadow:
+                          "0 0 20px rgba(0,229,255,0.3), inset 0 0 14px rgba(0,229,255,0.08)",
+                      }
+                    : { background: "rgba(0,229,255,0.03)" }
+                }
               >
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={
+                    pathname?.includes("/console/control")
+                      ? { filter: "drop-shadow(0 0 6px rgba(0,229,255,0.8))" }
+                      : {}
+                  }
+                >
                   <rect x="2" y="7" width="20" height="14" rx="2" />
                   <path d="M12 7V3" />
                   <circle cx="12" cy="3" r="1" />
@@ -140,13 +177,36 @@ export default function RobotConnectionPanel() {
                 onClick={() =>
                   router.push(`/console/auto?robotId=${activeRobotId}`)
                 }
-                className={`flex-1 flex flex-col items-center gap-2 px-3 py-3 rounded-xl text-sm font-semibold border transition-all duration-150 ${
+                className={`flex-1 flex flex-col items-center gap-2 px-3 py-4 rounded-xl text-sm font-bold border-2 transition-all duration-150 ${
                   pathname?.includes("/console/auto")
-                    ? "bg-purple-500/20 border-purple-400/60 text-purple-300 shadow-[0_0_14px_rgba(168,85,247,0.25)]"
-                    : "bg-transparent border-purple-500/20 text-gray-400 hover:bg-purple-500/10 hover:border-purple-400/40 hover:text-purple-300"
+                    ? "border-purple-400/80 text-purple-200"
+                    : "border-purple-500/25 text-gray-500 hover:border-purple-400/50 hover:text-purple-300"
                 }`}
+                style={
+                  pathname?.includes("/console/auto")
+                    ? {
+                        background: "rgba(168,85,247,0.12)",
+                        boxShadow:
+                          "0 0 20px rgba(168,85,247,0.3), inset 0 0 14px rgba(168,85,247,0.08)",
+                      }
+                    : { background: "rgba(168,85,247,0.03)" }
+                }
               >
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="24"
+                  height="24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={
+                    pathname?.includes("/console/auto")
+                      ? { filter: "drop-shadow(0 0 6px rgba(168,85,247,0.8))" }
+                      : {}
+                  }
+                >
                   <circle cx="12" cy="12" r="3" />
                   <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
                 </svg>
