@@ -105,34 +105,52 @@ export default function RobotConnectionPanel() {
 
         {/* Mode Toggle */}
         {isConnected && (
-          <div className="glass-card-light rounded-xl p-3">
-            <div className="text-xs text-cyan-400/70 mb-2 text-center font-medium tracking-widest uppercase">
-              Select Mode
+          <div
+            className="rounded-xl p-4 border border-cyan-500/25"
+            style={{ background: 'rgba(0,229,255,0.04)', boxShadow: '0 0 18px rgba(0,229,255,0.06), inset 0 0 12px rgba(0,229,255,0.03)' }}
+          >
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent to-cyan-500/30" />
+              <span className="text-xs text-cyan-300 font-bold tracking-[0.2em] uppercase">Select Mode</span>
+              <div className="h-px flex-1 bg-gradient-to-l from-transparent to-cyan-500/30" />
             </div>
-            <div className="flex rounded-xl overflow-hidden border border-cyan-500/20">
+            <div className="flex gap-2">
               <button
                 onClick={() =>
                   router.push(`/console/control?robotId=${activeRobotId}`)
                 }
-                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                className={`flex-1 flex flex-col items-center gap-2 px-3 py-3 rounded-xl text-sm font-semibold border transition-all duration-150 ${
                   pathname?.includes("/console/control")
-                    ? "bg-cyan-500/20 text-cyan-300 border-r border-cyan-500/20"
-                    : "bg-transparent text-gray-400 hover:bg-cyan-500/10 hover:text-cyan-300 border-r border-cyan-500/20"
+                    ? "bg-cyan-500/20 border-cyan-400/60 text-cyan-300 shadow-[0_0_14px_rgba(0,229,255,0.25)]"
+                    : "bg-transparent border-cyan-500/20 text-gray-400 hover:bg-cyan-500/10 hover:border-cyan-400/40 hover:text-cyan-300"
                 }`}
               >
-                🎮 Manual
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="7" width="20" height="14" rx="2" />
+                  <path d="M12 7V3" />
+                  <circle cx="12" cy="3" r="1" />
+                  <line x1="8" y1="14" x2="8" y2="14" strokeWidth="3" />
+                  <line x1="16" y1="14" x2="16" y2="14" strokeWidth="3" />
+                  <line x1="12" y1="12" x2="12" y2="16" />
+                  <line x1="10" y1="14" x2="14" y2="14" />
+                </svg>
+                Manual
               </button>
               <button
                 onClick={() =>
                   router.push(`/console/auto?robotId=${activeRobotId}`)
                 }
-                className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                className={`flex-1 flex flex-col items-center gap-2 px-3 py-3 rounded-xl text-sm font-semibold border transition-all duration-150 ${
                   pathname?.includes("/console/auto")
-                    ? "bg-purple-500/20 text-purple-300"
-                    : "bg-transparent text-gray-400 hover:bg-purple-500/10 hover:text-purple-300"
+                    ? "bg-purple-500/20 border-purple-400/60 text-purple-300 shadow-[0_0_14px_rgba(168,85,247,0.25)]"
+                    : "bg-transparent border-purple-500/20 text-gray-400 hover:bg-purple-500/10 hover:border-purple-400/40 hover:text-purple-300"
                 }`}
               >
-                🤖 Auto
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+                </svg>
+                Auto
               </button>
             </div>
           </div>

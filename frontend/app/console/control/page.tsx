@@ -341,18 +341,37 @@ export default function RobotControlPage() {
                 </p>
               </div>
               <div className="w-px h-8 bg-cyan-500/25" />
-              {/* Mode Toggle */}
-              <button
-                onClick={toggleMode}
-                disabled={!isConnected}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
+              {/* Mode Status */}
+              <div
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border select-none ${
                   currentMode === "manual"
-                    ? "bg-cyan-500/15 border-cyan-400/50 text-cyan-300 hover:bg-cyan-500/25"
-                    : "bg-purple-500/15 border-purple-400/50 text-purple-300 hover:bg-purple-500/25"
+                    ? "bg-cyan-500/15 border-cyan-400/50 text-cyan-300"
+                    : "bg-purple-500/15 border-purple-400/50 text-purple-300"
                 }`}
               >
-                {currentMode === "manual" ? "🎮 Manual" : "🤖 Auto"}
-              </button>
+                {currentMode === "manual" ? (
+                  <>
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="7" width="20" height="14" rx="2" />
+                      <path d="M12 7V3" />
+                      <circle cx="12" cy="3" r="1" />
+                      <line x1="8" y1="14" x2="8" y2="14" strokeWidth="3" />
+                      <line x1="16" y1="14" x2="16" y2="14" strokeWidth="3" />
+                      <line x1="12" y1="12" x2="12" y2="16" />
+                      <line x1="10" y1="14" x2="14" y2="14" />
+                    </svg>
+                    Manual
+                  </>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+                    </svg>
+                    Auto
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Right: status pills + robot info + battery */}
@@ -414,12 +433,56 @@ export default function RobotControlPage() {
                 <div className="absolute inset-0 bg-[#0B0F2A] flex items-center justify-center">
                   {!isConnected ? (
                     <div className="text-gray-500 text-center">
-                      <div className="text-gray-400 mb-2 text-2xl">📹</div>
-                      <div className="text-sm">Connect to view live feed</div>
+                      <div className="mb-3 flex justify-center">
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="48"
+                          height="48"
+                          fill="none"
+                          stroke="rgba(0,229,255,0.35)"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M23 7l-7 5 7 5V7z" />
+                          <rect
+                            x="1"
+                            y="5"
+                            width="15"
+                            height="14"
+                            rx="2"
+                            ry="2"
+                          />
+                        </svg>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Connect to view live feed
+                      </div>
                     </div>
                   ) : !latestVisionFrame ? (
                     <div className="text-gray-500 text-center">
-                      <div className="text-gray-500 mb-2 text-2xl">⏳</div>
+                      <div className="mb-3 flex justify-center">
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="48"
+                          height="48"
+                          fill="none"
+                          stroke="rgba(0,229,255,0.35)"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="animate-spin"
+                          style={{ animationDuration: "3s" }}
+                        >
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            strokeDasharray="40 20"
+                          />
+                          <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                      </div>
                       <div className="text-sm text-gray-500">
                         Waiting for video stream...
                       </div>
@@ -637,11 +700,22 @@ export default function RobotControlPage() {
                 <button
                   onClick={capturePanoramicImage}
                   disabled={!isConnected || isPanoramicCapturing}
-                  className="w-full p-3 rounded-xl border border-purple-400/50 bg-purple-500/15 text-purple-300 font-medium hover:bg-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="w-full p-3 rounded-xl border border-purple-400/50 bg-purple-500/15 text-purple-300 font-medium hover:bg-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                 >
-                  {isPanoramicCapturing
-                    ? "📸 Capturing..."
-                    : "📸 360° Panoramic"}
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                  {isPanoramicCapturing ? "Capturing..." : "360° Panoramic"}
                 </button>
               </div>
             </div>

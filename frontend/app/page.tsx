@@ -80,7 +80,7 @@ export default function LoginPage() {
 
   return (
     <div className="login-page min-h-screen flex items-center justify-center px-4 relative z-10">
-      <div className="max-w-md w-full glass-card p-8">
+      <div className="max-w-xl w-full glass-card p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2 glow-heading">
             Medi Runner
