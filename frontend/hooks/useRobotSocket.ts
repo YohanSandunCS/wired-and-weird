@@ -68,7 +68,12 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
         const data = JSON.parse(event.data)
         setLastMessageRef.current(data)
         
-        if (data.type === 'pong' && data.robotId === robotId) {
+        if (data.type === 'robot_status' && data.robotId === robotId) {
+          // Handle robot status notification from gateway
+          const isOnline = data.payload?.isOnline || false
+          updateRobotStatus(robotId, isOnline)
+          addLogRef.current?.(`Robot status: ${isOnline ? 'Online' : 'Offline'}`, isOnline ? 'success' : 'info')
+        } else if (data.type === 'pong' && data.robotId === robotId) {
           // Robot is online - it responded to ping
           updateRobotStatus(robotId, true)
           const sentTime = pendingPingsRef.current.get(data.timestamp)
@@ -146,10 +151,7 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
         setIsConnected(true)
         setWsConnected(true)
         addLog('WebSocket connected', 'success')
-        // Don't set robot online yet - wait for pong response
-        if (robotId) {
-          updateRobotStatus(robotId, false)
-        }
+        // Gateway will send robot_status message immediately
       }
 
       globalSocket.onclose = (event) => {
