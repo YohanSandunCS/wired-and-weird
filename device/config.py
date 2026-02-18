@@ -13,8 +13,8 @@ class Config:
     
     # Gateway Configuration
     GATEWAY_HOST = os.getenv('GATEWAY_HOST', 'localhost')
-    GATEWAY_PORT = int(os.getenv('GATEWAY_PORT', '8765'))
-    GATEWAY_URL = os.getenv('GATEWAY_URL', f'ws://{GATEWAY_HOST}:{GATEWAY_PORT}')
+    GATEWAY_PORT = int(os.getenv('GATEWAY_PORT', '8000'))
+    GATEWAY_URL = os.getenv('GATEWAY_URL', f'ws://{GATEWAY_HOST}:{GATEWAY_PORT}/ws/robot?robotId={{robot_id}}')
     
     # Robot Identification
     ROBOT_ID = os.getenv('ROBOT_ID', 'medirunner_001')
@@ -64,6 +64,7 @@ class Config:
     LINE_LOST_MAX_COUNT = int(os.getenv('LINE_LOST_MAX_COUNT', '20'))
     LINE_FOLLOW_UPDATE_RATE = float(os.getenv('LINE_FOLLOW_UPDATE_RATE', '0.05'))  # 20Hz
     INVERT_LINE_SENSORS = os.getenv('INVERT_LINE_SENSORS', 'False').lower() in ('true', '1', 'yes')  # True if sensors return 1 for black
+    INVERT_MOTOR_CORRECTION = os.getenv('INVERT_MOTOR_CORRECTION', 'False').lower() in ('true', '1', 'yes')  # True if turning wrong way
     
     # Debug Mode
     DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
@@ -73,7 +74,7 @@ class Config:
     ENABLE_CAMERA = os.getenv('ENABLE_CAMERA', 'False').lower() in ('true', '1', 'yes')
     ENABLE_SENSORS = os.getenv('ENABLE_SENSORS', 'True').lower() in ('true', '1', 'yes')
     ENABLE_BUZZER = os.getenv('ENABLE_BUZZER', 'False').lower() in ('true', '1', 'yes')
-    ENABLE_WEBSOCKET = os.getenv('ENABLE_WEBSOCKET', 'False').lower() in ('true', '1', 'yes')
+    ENABLE_WEBSOCKET = os.getenv('ENABLE_WEBSOCKET', 'True').lower() in ('true', '1', 'yes')
     ENABLE_PROXIMITY = os.getenv('ENABLE_PROXIMITY', 'False').lower() in ('true', '1', 'yes')
     ENABLE_BUMP = os.getenv('ENABLE_BUMP', 'False').lower() in ('true', '1', 'yes')
     

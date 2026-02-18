@@ -224,10 +224,11 @@ class MediRunnerRobot:
         """Send command acknowledgment"""
         if self.ws_client and command_id:
             ack_msg = {
-                'type': 'acknowledgment',
-                'robot_id': Config.ROBOT_ID,
-                'command_id': command_id,
-                'timestamp': datetime.now().isoformat()
+                'type': 'pong',
+                'payload': {
+                    'command_id': command_id,
+                    'acknowledged': True
+                }
             }
             await self.ws_client.send_message(ack_msg)
     
@@ -327,11 +328,14 @@ class MediRunnerRobot:
                     success = self.line_follower.update()
                     
                     if not success:
-                        print("[Main] Line following failed - switching to manual mode")
+                        print("\n[Main] ⚠ Line following failed - AUTO MODE DISABLED")
+                        print("[Main] Switching to MANUAL mode\n")
                         self.auto_mode_active = False
                         self.mode = 'manual'
                         if self.buzzer:
                             self.buzzer.alert_error()
+                        # Wait a bit before potential restart
+                        await asyncio.sleep(1)
                     
                     # Update at configured rate
                     await asyncio.sleep(Config.LINE_FOLLOW_UPDATE_RATE)

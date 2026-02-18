@@ -40,10 +40,12 @@ class LineFollower:
         self.line_lost_counter = 0
         self.last_direction = 'center'  # Track last known direction
         self.max_lost_iterations = Config.LINE_LOST_MAX_COUNT
+        self.search_direction = 'right'  # Direction for 360 search
         
         if Config.DEBUG:
             print(f"[LineFollower] Initialized with PID: Kp={self.kp}, Ki={self.ki}, Kd={self.kd}")
             print(f"[LineFollower] Base speed: {self.base_speed}")
+            print(f"[LineFollower] Motor correction inverted: {Config.INVERT_MOTOR_CORRECTION}")
     
     def get_line_error(self):
         """Calculate line position error from sensor readings
@@ -86,12 +88,12 @@ class LineFollower:
                 weighted_sum += weight
         
         # DEBUG: Always print sensor values to diagnose issue
-        print(f"[LineFollower] RAW SENSORS: L2={sensors['left2']} L1={sensors['left1']} C={sensors['center']} R1={sensors['right1']} R2={sensors['right2']} | On line: {sensors_on_line} | Inverted: {Config.INVERT_LINE_SENSORS}")
+        sensor_str = f"L2={sensors['left2']} L1={sensors['left1']} C={sensors['center']} R1={sensors['right1']} R2={sensors['right2']}"
+        print(f"[LineFollower] Sensors: {sensor_str} | Detected: {sensors_on_line} sensors")
         
         # Calculate error
         if sensors_on_line == 0:
             # Line lost - return None to trigger search behavior
-            print("[LineFollower] ERROR: No sensors detect line (all sensors = 1)")
             return None
         
         # Average position error
@@ -149,21 +151,33 @@ class LineFollower:
         
         Args:
             correction: Speed adjustment value
-            Positive correction = line is right, need to turn right (slow right motor)
-            Negative correction = line is left, need to turn left (slow left motor)
+            Positive correction = line is right, need to turn right
+            Negative correction = line is left, need to turn left
         """
+        # Invert correction if configured (if robot turns wrong way)
+        if Config.INVERT_MOTOR_CORRECTION:
+            correction = -correction
+        
         # Calculate individual motor speeds
-        # When line is right (+correction), slow down right motor
-        # When line is left (-correction), slow down left motor
-        left_speed = self.base_speed + correction  # Increase if turning right
-        right_speed = self.base_speed - correction  # Increase if turning left
+        # When line is right (+correction), left motor faster, right slower → turn right
+        # When line is left (-correction), right motor faster, left slower → turn left
+        left_speed = self.base_speed + correction
+        right_speed = self.base_speed - correction
         
         # Clamp speeds to valid range (0-100)
         left_speed = max(0, min(100, left_speed))
         right_speed = max(0, min(100, right_speed))
         
+        # Determine turn direction for display
+        if abs(correction) < 2:
+            direction = "STRAIGHT"
+        elif correction > 0:
+            direction = "RIGHT ➜"
+        else:
+            direction = "⬅ LEFT"
+        
         # Always print motor speeds for debugging
-        print(f"[LineFollower] → Motor speeds: L={left_speed:.1f}, R={right_speed:.1f} (correction={correction:.1f})")
+        print(f"[LineFollower] {direction} | L={left_speed:.1f} R={right_speed:.1f} | corr={correction:.1f}")
         
         # Apply smooth differential steering (both motors forward)
         self.motors.set_motor_speeds(left_speed, right_speed)
@@ -171,31 +185,57 @@ class LineFollower:
     def handle_line_lost(self):
         """
         Handle situation when line is completely lost
-        Implements search pattern to reacquire line
+        Implements 360-degree rotation search pattern
         """
         self.line_lost_counter += 1
         
-        if self.line_lost_counter <= 3:
-            # First few iterations: continue in last direction briefly
-            print(f"[LineFollower] Line lost! Attempting recovery... ({self.line_lost_counter})")
+        if self.line_lost_counter == 1:
+            print("\n[LineFollower] ⚠ LINE LOST! Starting recovery...")
+            print("[LineFollower] Phase 1: Moving forward to reacquire...")
             self.motors.forward(self.base_speed * 0.5)
+            return True
             
-        elif self.line_lost_counter <= 10:
-            # Search pattern: turn in last known direction
-            if self.last_direction == 'left' or self.previous_error < 0:
-                print("[LineFollower] Searching left...")
+        elif self.line_lost_counter <= 5:
+            # First few iterations: continue forward slowly
+            print(f"[LineFollower] Phase 1: Forward search ({self.line_lost_counter}/5)")
+            self.motors.forward(self.base_speed * 0.5)
+            return True
+            
+        elif self.line_lost_counter == 6:
+            print("[LineFollower] Phase 2: 360° rotation search - starting...")
+            # Determine rotation direction based on last known position
+            if self.previous_error < 0:
+                print("[LineFollower] Rotating LEFT (line was on left)")
+                self.search_direction = 'left'
+            else:
+                print("[LineFollower] Rotating RIGHT (line was on right)")
+                self.search_direction = 'right'
+            return True
+            
+        elif self.line_lost_counter <= 50:  # About 2-3 seconds at 20Hz
+            # 360-degree rotation search
+            progress = self.line_lost_counter - 6
+            if progress % 10 == 0:
+                print(f"[LineFollower] Phase 2: Rotating... ({progress}/44)")
+            
+            if self.search_direction == 'left':
                 self.motors.turn_left(Config.TURN_MOTOR_SPEED)
             else:
-                print("[LineFollower] Searching right...")
                 self.motors.turn_right(Config.TURN_MOTOR_SPEED)
-                
+            return True
+            
+        elif self.line_lost_counter <= 55:
+            # Brief pause
+            print("[LineFollower] Phase 3: Final check...")
+            self.motors.stop()
+            return True
+            
         else:
-            # Line lost for too long - stop robot
-            print("[LineFollower] Line completely lost! Stopping.")
+            # Line completely lost - give up
+            print("\n[LineFollower] ❌ RECOVERY FAILED - Line not found after 360° search")
+            print("[LineFollower] Stopping robot and switching to manual mode\n")
             self.motors.stop()
             return False
-        
-        return True
     
     def update(self):
         """
