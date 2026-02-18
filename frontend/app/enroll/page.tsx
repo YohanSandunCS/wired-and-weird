@@ -13,9 +13,12 @@ export default function EnrollPage() {
   const [messageType, setMessageType] = useState<'error' | 'success' | 'info'>('info')
   const [enrolledUsers, setEnrolledUsers] = useState<Array<{user_id: string, name: string}>>([])
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
+  const [countdown, setCountdown] = useState<number>(0)
+  const [readyToCapture, setReadyToCapture] = useState(false)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const autoEnrollTimerRef = useRef<NodeJS.Timeout | null>(null)
   const router = useRouter()
 
   // Fetch enrolled users on mount
@@ -30,6 +33,9 @@ export default function EnrollPage() {
   const cleanup = () => {
     if (cameraStream) {
       cameraStream.getTracks().forEach(track => track.stop())
+    }
+    if (autoEnrollTimerRef.current) {
+      clearInterval(autoEnrollTimerRef.current)
     }
   }
 
@@ -59,16 +65,19 @@ export default function EnrollPage() {
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream
+        
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play()
+          
+          setMessage('Camera ready. Fill in your details below.')
+          setMessageType('info')
+          
+          // Voice guidance
+          speakSuccess('Camera ready. Focus on middle area of the camera')
+        }
       }
       
-      setMessage('Camera ready. Fill in details and click "Enroll Face" to register.')
-      setMessageType('info')
-      
-      // Voice guidance
-      speakSuccess('Opening camera')
-      setTimeout(() => {
-        speakSuccess('Please focus on middle area of the screen')
-      }, 1500)
     } catch (error) {
       console.error('Camera error:', error)
       setMessage('Failed to access camera. Please grant camera permissions.')
@@ -78,6 +87,7 @@ export default function EnrollPage() {
 
   const captureFrame = (): string | null => {
     if (!videoRef.current || !canvasRef.current) {
+      console.error('Video or canvas ref not available')
       return null
     }
 
@@ -86,6 +96,15 @@ export default function EnrollPage() {
     const context = canvas.getContext('2d')
 
     if (!context) {
+      console.error('Canvas context not available')
+      return null
+    }
+
+    // Check if video is ready and has valid dimensions
+    if (video.readyState < 2 || video.videoWidth === 0) {
+      console.error('Video not ready or has invalid dimensions')
+      setMessage('Video not ready. Please wait...')
+      setMessageType('error')
       return null
     }
 
@@ -99,19 +118,53 @@ export default function EnrollPage() {
     return base64
   }
 
-  const handleEnroll = async () => {
+  const startAutoEnroll = () => {
     if (!userId.trim() || !name.trim()) {
-      setMessage('Please enter both User ID and Name')
+      setMessage('Please enter both User ID and Name first')
       setMessageType('error')
       return
     }
 
-    if (!cameraStream) {
-      setMessage('Camera not initialized')
+    // Check if video stream is available via videoRef
+    if (!videoRef.current || !videoRef.current.srcObject) {
+      setMessage('Camera not ready. Please wait or refresh the page.')
       setMessageType('error')
       return
     }
 
+    // Check if video is actually playing
+    if (videoRef.current.readyState < 2) {
+      setMessage('Video not ready yet. Please wait a moment...')
+      setMessageType('error')
+      return
+    }
+
+    setReadyToCapture(true)
+    speakSuccess('Get ready. Taking picture in 3 seconds')
+    
+    let count = 3
+    setCountdown(count)
+    setMessage(`Position your face. Capturing in ${count}...`)
+    
+    const countdownInterval = setInterval(() => {
+      count--
+      setCountdown(count)
+      
+      if (count === 0) {
+        clearInterval(countdownInterval)
+        setMessage('Capturing...')
+        setTimeout(() => {
+          captureAndEnroll()
+        }, 500)
+      } else {
+        setMessage(`Position your face. Capturing in ${count}...`)
+      }
+    }, 1000)
+    
+    autoEnrollTimerRef.current = countdownInterval
+  }
+
+  const captureAndEnroll = async () => {
     setIsEnrolling(true)
     setMessage('Capturing and enrolling face...')
     setMessageType('info')
@@ -147,6 +200,8 @@ export default function EnrollPage() {
         // Clear form
         setUserId('')
         setName('')
+        setReadyToCapture(false)
+        setCountdown(0)
         
         // Refresh user list
         fetchEnrolledUsers()
@@ -287,11 +342,16 @@ export default function EnrollPage() {
                 )}
 
                 <button
-                  onClick={handleEnroll}
-                  disabled={!cameraStream || isEnrolling || !userId.trim() || !name.trim()}
+                  onClick={startAutoEnroll}
+                  disabled={!cameraStream || isEnrolling || !userId.trim() || !name.trim() || readyToCapture}
                   className="w-full bg-purple-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center"
                 >
-                  {isEnrolling ? (
+                  {countdown > 0 ? (
+                    <>
+                      <span className="text-3xl font-bold mr-2">{countdown}</span>
+                      <span>Get ready...</span>
+                    </>
+                  ) : isEnrolling ? (
                     <>
                       <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -304,7 +364,7 @@ export default function EnrollPage() {
                       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                       </svg>
-                      Enroll Face
+                      Capture & Enroll
                     </>
                   )}
                 </button>

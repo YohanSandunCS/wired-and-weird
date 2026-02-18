@@ -44,10 +44,12 @@ export default function FaceLoginPage() {
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState<'error' | 'success' | 'info'>('info')
   const [voiceTranscript, setVoiceTranscript] = useState('')
+  const [countdown, setCountdown] = useState<number>(0)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const autoScanTimerRef = useRef<NodeJS.Timeout | null>(null)
   
   const router = useRouter()
   const { isAuthenticated, setAuthenticated, login, teamSession } = useAppStore()
@@ -74,10 +76,14 @@ export default function FaceLoginPage() {
     if (recognitionRef.current) {
       recognitionRef.current.stop()
     }
+    if (autoScanTimerRef.current) {
+      clearInterval(autoScanTimerRef.current)
+    }
   }
 
   const initializeCamera = async () => {
     try {
+      console.log('🎥 Requesting camera access...')
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           width: { ideal: 640 },
@@ -86,14 +92,30 @@ export default function FaceLoginPage() {
         } 
       })
       
+      console.log('🎥 Camera stream obtained:', stream.id)
       setCameraStream(stream)
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream
+        console.log('🎥 Video element srcObject set')
+        
+        // Wait for video to be ready before starting auto-capture
+        videoRef.current.onloadedmetadata = () => {
+          console.log('🎥 Video metadata loaded, ready to play')
+          videoRef.current?.play()
+          
+          // Voice guidance
+          speakSuccess('Camera ready. Focus on middle area of the camera')
+          setMessage('Camera ready. Auto-capturing in 3 seconds...')
+          setMessageType('info')
+          
+          // Start countdown for auto-capture after video is ready
+          setTimeout(() => {
+            console.log('🎥 Starting auto-capture sequence')
+            startAutoCapture()
+          }, 1000)
+        }
       }
-      
-      setMessage('Camera ready. Click "Scan Face" to authenticate.')
-      setMessageType('info')
     } catch (error) {
       console.error('Camera error:', error)
       setMessage('Failed to access camera. Please grant camera permissions.')
@@ -101,8 +123,45 @@ export default function FaceLoginPage() {
     }
   }
 
+  const startAutoCapture = () => {
+    console.log('🎯 startAutoCapture called')
+    console.log('🎯 videoRef.current:', videoRef.current)
+    console.log('🎯 videoRef.current.srcObject:', videoRef.current?.srcObject)
+    
+    // Verify camera stream is available - check videoRef's srcObject directly
+    if (!videoRef.current || !videoRef.current.srcObject) {
+      console.error('❌ Camera stream not available for auto-capture')
+      setMessage('Camera not ready. Please refresh the page.')
+      setMessageType('error')
+      return
+    }
+
+    console.log('✅ Camera stream verified, starting countdown')
+    let count = 3
+    setCountdown(count)
+    
+    const countdownInterval = setInterval(() => {
+      count--
+      setCountdown(count)
+      
+      if (count === 0) {
+        clearInterval(countdownInterval)
+        setMessage('Capturing...')
+        // Trigger face scan
+        setTimeout(() => {
+          handleFaceScan()
+        }, 500)
+      } else {
+        setMessage(`Position your face in the center. Capturing in ${count}...`)
+      }
+    }, 1000)
+    
+    autoScanTimerRef.current = countdownInterval
+  }
+
   const captureFrame = (): string | null => {
     if (!videoRef.current || !canvasRef.current) {
+      console.error('Video or canvas ref not available')
       return null
     }
 
@@ -111,6 +170,13 @@ export default function FaceLoginPage() {
     const context = canvas.getContext('2d')
 
     if (!context) {
+      console.error('Canvas context not available')
+      return null
+    }
+
+    // Check if video is ready and has valid dimensions
+    if (video.readyState < 2 || video.videoWidth === 0) {
+      console.error('Video not ready or has invalid dimensions')
       return null
     }
 
@@ -131,7 +197,8 @@ export default function FaceLoginPage() {
   }
 
   const handleFaceScan = async () => {
-    if (!cameraStream) {
+    // Check if video stream is available via videoRef
+    if (!videoRef.current || !videoRef.current.srcObject) {
       setMessage('Camera not initialized')
       setMessageType('error')
       return
@@ -331,10 +398,15 @@ export default function FaceLoginPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <button
             onClick={handleFaceScan}
-            disabled={!cameraStream || isScanning}
+            disabled={!cameraStream || isScanning || countdown > 0}
             className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center"
           >
-            {isScanning ? (
+            {countdown > 0 ? (
+              <>
+                <span className="text-3xl font-bold mr-2">{countdown}</span>
+                <span>Get ready...</span>
+              </>
+            ) : isScanning ? (
               <>
                 <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -348,7 +420,7 @@ export default function FaceLoginPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
-                Scan Face
+                Scan Face (Auto)
               </>
             )}
           </button>

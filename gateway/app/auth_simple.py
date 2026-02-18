@@ -350,8 +350,8 @@ class SimpleFaceAuthenticator:
                 print(f"   Best match: {best_similarity:.2f}%")
                 print("-------------------------------\n")
                 
-                # Require minimum 55% similarity for demo (improved algorithm needs higher threshold)
-                SIMILARITY_THRESHOLD = 55.0
+                # Lowered threshold to 48% for better usability (was 55%)
+                SIMILARITY_THRESHOLD = 48.0
                 
                 if best_similarity >= SIMILARITY_THRESHOLD and best_match_user_id:
                     user_name = self.enrolled_users[best_match_user_id]["name"]
