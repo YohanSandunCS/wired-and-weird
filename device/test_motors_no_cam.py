@@ -8,16 +8,12 @@ Simple program to test motor functionality with a predefined sequence:
 4. Stop for 1 second
 5. Turn left and drive for 2 seconds
 6. Stop for 1 second
-7. Take a photo and save to desktop
-8. Drive backwards for 2 seconds
-9. Stop
+7. Drive backwards for 2 seconds
+8. Stop
 """
 import time
-import os
-from datetime import datetime
 import RPi.GPIO as GPIO
 from hardware.motors import MotorController
-from hardware.camera import Camera
 from config import Config
 
 def main():
@@ -33,16 +29,6 @@ def main():
     except Exception as e:
         print(f"[Test] Failed to initialize motors: {e}")
         return
-    
-    # Initialize camera
-    camera = None
-    try:
-        camera = Camera()
-        camera.start()
-        print("[Test] Camera initialized successfully\n")
-    except Exception as e:
-        print(f"[Test] Failed to initialize camera: {e}")
-        print("[Test] Continuing without camera...\n")
     
     try:
         # Sequence 1: Forward for 2 seconds
@@ -75,31 +61,6 @@ def main():
         motors.stop()
         time.sleep(1)
         
-        # Take a photo and save to desktop
-        if camera:
-            print("[Test] Taking photo...")
-            try:
-                image = camera.capture_frame()
-                if image:
-                    # Get desktop path
-                    desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
-                    # Create filename with timestamp
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                    filename = f'medirunner_photo_{timestamp}.jpg'
-                    filepath = os.path.join(desktop_path, filename)
-                    
-                    # Save image
-                    image.save(filepath, 'JPEG')
-                    print(f"[Test] Photo saved to: {filepath}")
-                else:
-                    print("[Test] Failed to capture photo")
-            except Exception as e:
-                print(f"[Test] Error saving photo: {e}")
-        else:
-            print("[Test] Skipping photo (camera not available)")
-        
-        time.sleep(1)
-        
         # Sequence 4: Backward for 2 seconds
         print("[Test] Moving BACKWARD for 2 seconds...")
         motors.backward()
@@ -125,8 +86,6 @@ def main():
         # Cleanup
         print("[Test] Cleaning up...")
         motors.cleanup()
-        if camera:
-            camera.cleanup()
         GPIO.cleanup()
         print("[Test] Cleanup complete")
 
