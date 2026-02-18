@@ -80,13 +80,15 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
             addLogRef.current?.('Received pong response', 'info')
           }
         } else if (data.type === 'telemetry' && data.robotId === robotId) {
-          // Handle telemetry data
+          // Handle telemetry data - robot is online
+          updateRobotStatus(robotId, true)
           if (data.payload?.battery !== undefined) {
             updateRobotBattery(robotId, data.payload.battery)
             addLogRef.current?.(`Battery: ${data.payload.battery}%`, 'info')
           }
         } else if (data.type === 'vision_frame' && data.robotId === robotId) {
-          // Handle vision frame (no logging to reduce spam)
+          // Handle vision frame - robot is online (no logging to reduce spam)
+          updateRobotStatus(robotId, true)
           setLatestVisionFrameRef.current(data)
         } else if (data.type === 'panoramic_image' && data.robotId === robotId) {
           // Handle panoramic image
