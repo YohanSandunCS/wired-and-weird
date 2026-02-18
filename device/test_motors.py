@@ -2,15 +2,11 @@
 """
 Motor Test Script
 Simple program to test motor functionality with a predefined sequence:
-1. Drive forward for 2 seconds
-2. Stop for 1 second
-3. Turn right and drive for 2 seconds
-4. Stop for 1 second
-5. Turn left and drive for 2 seconds
-6. Stop for 1 second
-7. Take a photo and save to desktop
-8. Drive backwards for 2 seconds
-9. Stop
+1. Drive forward for 2 seconds, stop and wait 1 second
+2. Turn right, then drive forward for 2 seconds, stop and wait 1 second
+3. Turn left, then drive forward for 2 seconds, stop
+4. Take a photo and save to desktop
+5. Drive backwards for 2 seconds and stop
 """
 import time
 import os
@@ -55,9 +51,13 @@ def main():
         motors.stop()
         time.sleep(1)
         
-        # Sequence 2: Turn right for 2 seconds
-        print("[Test] Turning RIGHT for 2 seconds...")
+        # Sequence 2: Turn right, then forward
+        print("[Test] Turning RIGHT...")
         motors.turn_right()
+        time.sleep(0.5)  # Brief turn
+        
+        print("[Test] Moving FORWARD for 2 seconds...")
+        motors.forward()
         time.sleep(2)
         
         # Stop for 1 second
@@ -65,13 +65,17 @@ def main():
         motors.stop()
         time.sleep(1)
         
-        # Sequence 3: Turn left for 2 seconds
-        print("[Test] Turning LEFT for 2 seconds...")
+        # Sequence 3: Turn left, then forward
+        print("[Test] Turning LEFT...")
         motors.turn_left()
+        time.sleep(0.5)  # Brief turn
+        
+        print("[Test] Moving FORWARD for 2 seconds...")
+        motors.forward()
         time.sleep(2)
         
-        # Stop for 1 second
-        print("[Test] STOPPING for 1 second...")
+        # Stop
+        print("[Test] STOPPING...")
         motors.stop()
         time.sleep(1)
         
