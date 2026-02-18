@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import useAppStore from '@/store/appStore'
 import { useRobotSocket } from '@/hooks/useRobotSocket'
 import BatteryStatus from '@/components/BatteryStatus'
+import PanoramicViewer from '@/components/PanoramicViewer'
 
 export default function RobotControlPage() {
   const router = useRouter()
@@ -17,6 +18,8 @@ export default function RobotControlPage() {
   const [pressedKeys, setPressedKeys] = useState(new Set<string>())
   const [commandHistory, setCommandHistory] = useState<Array<{id: string, command: string, timestamp: number}>>([])
   const [streamStatus, setStreamStatus] = useState<'loading' | 'connected' | 'error'>('loading')
+  const [showPanoramicModal, setShowPanoramicModal] = useState(false)
+  const [isPanoramicCapturing, setIsPanoramicCapturing] = useState(false)
   const logContainerRef = useRef<HTMLDivElement>(null)
   const isMouseOnScrollbar = useRef(false)
   
@@ -24,9 +27,11 @@ export default function RobotControlPage() {
     isConnected,
     logs,
     latestVisionFrame,
+    latestPanoramicImage,
     connect,
     disconnect,
     send,
+    clearPanoramicImage,
   } = useRobotSocket(robotId)
 
   // Redirect if not authenticated or not logged in or no robot
@@ -97,6 +102,38 @@ export default function RobotControlPage() {
     }
     setCommandHistory(prev => [...prev, historyEntry].slice(-20))
   }, [isConnected, robotId, send])
+
+  const capturePanoramicImage = useCallback(() => {
+    if (!isConnected || !robotId) return
+    
+    setIsPanoramicCapturing(true)
+    
+    const command = {
+      type: 'command',
+      robotId,
+      payload: {
+        action: 'panoramic'
+      },
+      timestamp: Date.now()
+    }
+    
+    send(command)
+    
+    const historyEntry = {
+      id: Date.now().toString(),
+      command: 'Capture Panoramic Image',
+      timestamp: Date.now()
+    }
+    setCommandHistory(prev => [...prev, historyEntry].slice(-20))
+  }, [isConnected, robotId, send])
+
+  // Handle panoramic image response
+  useEffect(() => {
+    if (latestPanoramicImage) {
+      setIsPanoramicCapturing(false)
+      setShowPanoramicModal(true)
+    }
+  }, [latestPanoramicImage])
 
   // Auto-scroll for logs
   useEffect(() => {
@@ -399,6 +436,17 @@ export default function RobotControlPage() {
                 </button>
                 <div></div>
               </div>
+              
+              {/* Panoramic Capture Button */}
+              <div className="mt-4">
+                <button
+                  onClick={capturePanoramicImage}
+                  disabled={!isConnected || !robot.isOnline || isPanoramicCapturing}
+                  className="w-full p-3 rounded-md border-2 bg-purple-500 text-white font-medium hover:bg-purple-600 border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isPanoramicCapturing ? '📸 Capturing...' : '📸 360° Panoramic'}
+                </button>
+              </div>
             </div>
 
             {/* Filtered Logs / Diagnostics */}
@@ -437,6 +485,20 @@ export default function RobotControlPage() {
           MediRunner Robot Control Interface
         </div>
       </footer>
+
+      {/* Panoramic Image Viewer */}
+      {showPanoramicModal && latestPanoramicImage && (
+        <PanoramicViewer
+          imageUrl={`data:${latestPanoramicImage.payload.mime};base64,${latestPanoramicImage.payload.data}`}
+          onClose={() => {
+            setShowPanoramicModal(false)
+            clearPanoramicImage()
+          }}
+          captureTime={latestPanoramicImage.payload.captureTime}
+          width={latestPanoramicImage.payload.width}
+          height={latestPanoramicImage.payload.height}
+        />
+      )}
     </div>
   )
 }

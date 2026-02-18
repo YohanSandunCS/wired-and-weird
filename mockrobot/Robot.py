@@ -46,6 +46,10 @@ class RobotClient:
                 }
                 ws.send(json.dumps(pong))
                 print("Robot sent pong:", pong)
+            elif msg.get("type") == "command" and msg.get("payload", {}).get("action") == "panoramic":
+                # Handle panoramic image capture command
+                print("Received panoramic capture command, generating panoramic image...")
+                threading.Thread(target=self.send_panoramic_image, daemon=True).start()
             else:
                 # Later: handle commands, missions, etc.
                 pass
@@ -188,6 +192,68 @@ class RobotClient:
             if cap:
                 cap.release()
             print("Mock camera stream stopped")
+
+    def send_panoramic_image(self):
+        """Generate and send a mock panoramic image"""
+        try:
+            # Generate a mock panoramic image (wider aspect ratio)
+            # In a real scenario, this would be stitched from multiple camera angles
+            cap = self.open_video_capture()
+            if not cap.isOpened():
+                print("[ERROR] Failed to open video file for panoramic capture")
+                return
+            
+            # Read a frame and create a wider panoramic version
+            ret, frame = cap.read()
+            cap.release()
+            
+            if not ret:
+                print("[ERROR] Failed to read frame for panoramic capture")
+                return
+            
+            # Create a panoramic image by stitching multiple frames horizontally
+            # For mock purposes, we'll just tile the frame horizontally 4 times
+            panoramic_frame = cv2.hconcat([frame, frame, frame, frame])
+            
+            # Resize to a reasonable panoramic size
+            panoramic_width = 1920
+            aspect_ratio = panoramic_frame.shape[1] / panoramic_frame.shape[0]
+            panoramic_height = int(panoramic_width / aspect_ratio)
+            panoramic_frame = cv2.resize(panoramic_frame, (panoramic_width, panoramic_height))
+            
+            # Encode as high-quality JPEG
+            encode_params = [cv2.IMWRITE_JPEG_QUALITY, 90]
+            success, encoded_frame = cv2.imencode('.jpg', panoramic_frame, encode_params)
+            
+            if not success:
+                print("[ERROR] Failed to encode panoramic image")
+                return
+            
+            # Convert to base64
+            b64_frame = base64.b64encode(encoded_frame.tobytes()).decode('utf-8')
+            
+            # Build panoramic image message
+            capture_time = int(time.time() * 1000)
+            msg = {
+                "type": "panoramic_image",
+                "robotId": ROBOT_ID,
+                "payload": {
+                    "mime": "image/jpeg",
+                    "width": panoramic_width,
+                    "height": panoramic_height,
+                    "data": b64_frame,
+                    "captureTime": capture_time,
+                },
+                "timestamp": capture_time,
+            }
+            
+            # Send the panoramic image
+            if self.ws:
+                self.ws.send(json.dumps(msg))
+                print(f"Sent panoramic image: {panoramic_width}x{panoramic_height}")
+            
+        except Exception as e:
+            print(f"Error generating panoramic image: {e}")
 
     def connect_with_retry(self):
         """Try to connect to WebSocket server with exponential backoff"""
