@@ -20,6 +20,7 @@ export default function RobotAutonomousPage() {
   const [autoCommandSent, setAutoCommandSent] = useState(false)
   const [showPanoramicModal, setShowPanoramicModal] = useState(false)
   const [isPanoramicCapturing, setIsPanoramicCapturing] = useState(false)
+  const [currentMode, setCurrentMode] = useState<'manual' | 'auto'>('auto')
   
   const {
     isConnected,
@@ -92,6 +93,25 @@ export default function RobotAutonomousPage() {
     console.log('Sent panoramic capture command:', command)
   }
 
+  const toggleMode = () => {
+    if (!isConnected || !robotId) return
+    
+    const newMode = currentMode === 'manual' ? 'auto' : 'manual'
+    
+    const command = {
+      type: 'command',
+      robotId,
+      payload: {
+        action: newMode === 'auto' ? 'auto' : 'manual'
+      },
+      timestamp: Date.now()
+    }
+    
+    send(command)
+    setCurrentMode(newMode)
+    console.log(`Switched to ${newMode} mode`)
+  }
+
   // Handle panoramic image response
   useEffect(() => {
     if (latestPanoramicImage) {
@@ -146,15 +166,23 @@ export default function RobotAutonomousPage() {
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push('/console')}
-                className="text-gray-600 hover:text-gray-900"
-              >
-                ← Back to Console
-              </button>
               <h1 className="text-xl font-semibold text-gray-900">
                 Robot Autonomous Mode
               </h1>
+              <div className="flex items-center space-x-2 ml-4">
+                <span className="text-sm text-gray-600">Mode:</span>
+                <button
+                  onClick={toggleMode}
+                  disabled={!isConnected || !robot.isOnline}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    currentMode === 'manual'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-purple-600 text-white'
+                  }`}
+                >
+                  {currentMode === 'manual' ? '🎮 Manual' : '🤖 Auto'}
+                </button>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
@@ -185,6 +213,12 @@ export default function RobotAutonomousPage() {
                   Robot: {robot.isOnline ? 'Online' : 'Offline'}
                 </span>
               </div>
+              <button
+                onClick={() => router.push('/console')}
+                className="px-3 py-2 rounded-md bg-gray-600 text-white text-sm font-medium hover:bg-gray-700 transition-colors"
+              >
+                ✕ Exit
+              </button>
             </div>
           </div>
         </div>
@@ -225,7 +259,7 @@ export default function RobotAutonomousPage() {
                   {/* Top Overlay */}
                   <div className="flex items-start justify-between">
                     <h2 className="text-lg font-medium text-white bg-[#00000061] px-3 py-1 rounded-md">
-                      Live Preview - Autonomous Mode
+                      {currentMode === 'auto' ? 'Live Preview - Autonomous Mode' : 'Live Preview - Manual Mode'}
                     </h2>
                     {latestVisionFrame && (
                       <div className="text-sm text-white bg-[#00000061] px-3 py-1 rounded-md">
@@ -242,7 +276,7 @@ export default function RobotAutonomousPage() {
                         {new Date(latestVisionFrame.timestamp).toLocaleTimeString()}
                       </div>
                       <div className="bg-[#00000061] text-white text-sm px-3 py-1 rounded-md font-medium">
-                        🤖 AUTO MODE
+                        {currentMode === 'auto' ? '🤖 AUTO MODE' : '🎮 MANUAL MODE'}
                       </div>
                     </div>
                   )}
@@ -253,13 +287,17 @@ export default function RobotAutonomousPage() {
                 <div className="p-6 bg-white border-t border-gray-200">
                   <div className="text-xs text-gray-500 space-y-2">
                     <div className="flex justify-between items-center">
-                      <span>Robot is operating in autonomous mode</span>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Following line autonomously
+                      <span>{currentMode === 'auto' ? 'Robot is operating in autonomous mode' : 'Robot in manual mode (use Control page for controls)'}</span>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        currentMode === 'auto' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {currentMode === 'auto' ? 'Following line autonomously' : 'Manual control'}
                       </span>
                     </div>
                     <div className="text-sm pt-2 text-gray-600">
-                      The robot is following the line autonomously. Monitor the video feed and logs for real-time status.
+                      {currentMode === 'auto' 
+                        ? 'The robot is following the line autonomously. Monitor the video feed and logs for real-time status.' 
+                        : 'Switch to Control Robot page for manual controls or toggle back to Auto mode.'}
                     </div>
                   </div>
                 </div>
@@ -271,11 +309,13 @@ export default function RobotAutonomousPage() {
           <div className="w-1/4 flex flex-col space-y-6">
             {/* Status Panel */}
             <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Autonomous Status</h2>
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Status</h2>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Mode</span>
-                  <span className="text-sm font-medium text-gray-900">Autonomous</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {currentMode === 'auto' ? 'Autonomous' : 'Manual'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Command Sent</span>
@@ -299,7 +339,7 @@ export default function RobotAutonomousPage() {
                   className="w-full p-3 rounded-md border-2 bg-purple-500 text-white font-medium hover:bg-purple-600 border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isPanoramicCapturing ? '📸 Capturing...' : '📸 360° Panoramic'}
-                </button>
+                </button>{currentMode === 'auto' ? 'Autonomous' : 'Control'}
               </div>
             </div>
 
@@ -336,7 +376,7 @@ export default function RobotAutonomousPage() {
       {/* Footer */}
       <footer className="bg-white shadow-sm border-t border-gray-200 p-4">
         <div className="max-w-7xl mx-auto text-center text-sm text-gray-500">
-          MediRunner Robot Autonomous Interface
+          MediRunner Robot Interface - {currentMode === 'auto' ? 'Autonomous Mode' : 'Manual Mode'}
         </div>
       </footer>
     </div>

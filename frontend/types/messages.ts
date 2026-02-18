@@ -43,7 +43,7 @@ export interface Robot {
 export interface CommandMessage extends BaseMessage {
   type: "command";
   payload: {
-    action: "move" | "stop" | "panoramic" | "auto";
+    action: "move" | "stop" | "panoramic" | "auto" | "manual";
     direction?: "forward" | "backward" | "left" | "right";
   };
   timestamp: number;
