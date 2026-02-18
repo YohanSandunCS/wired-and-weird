@@ -187,25 +187,80 @@ function ConsoleLoadHeader({
 }) {
   return (
     <div className="flex justify-center mb-6">
-      <div className="glass-card-light p-1 inline-flex items-center h-[48px]">
+      <div
+        className="p-1 inline-flex items-center rounded-2xl border border-cyan-500/20"
+        style={{ background: "rgba(6,12,40,0.7)", gap: "4px" }}
+      >
         <button
           onClick={() => !isLoadMode && onToggle()}
-          className={`px-6 h-full rounded-xl font-medium transition-all duration-200 flex items-center ${
+          className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
             isLoadMode
-              ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[16px]"
-              : "text-gray-500 hover:text-gray-300 text-sm"
+              ? "text-cyan-200 border border-cyan-400/60"
+              : "text-gray-500 hover:text-gray-300 border border-transparent"
           }`}
+          style={
+            isLoadMode
+              ? {
+                  background: "rgba(0,229,255,0.12)",
+                  boxShadow:
+                    "0 0 16px rgba(0,229,255,0.2), inset 0 0 10px rgba(0,229,255,0.06)",
+                }
+              : { background: "transparent" }
+          }
         >
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={
+              isLoadMode
+                ? { filter: "drop-shadow(0 0 4px rgba(0,229,255,0.7))" }
+                : {}
+            }
+          >
+            <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
           Load Medical Items
         </button>
         <button
           onClick={() => isLoadMode && onToggle()}
-          className={`px-6 h-full rounded-xl font-medium transition-all duration-200 flex items-center ${
+          className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 ${
             !isLoadMode
-              ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[16px]"
-              : "text-gray-500 hover:text-gray-300 text-sm"
+              ? "text-cyan-200 border border-cyan-400/60"
+              : "text-gray-500 hover:text-gray-300 border border-transparent"
           }`}
+          style={
+            !isLoadMode
+              ? {
+                  background: "rgba(0,229,255,0.12)",
+                  boxShadow:
+                    "0 0 16px rgba(0,229,255,0.2), inset 0 0 10px rgba(0,229,255,0.06)",
+                }
+              : { background: "transparent" }
+          }
         >
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={
+              !isLoadMode
+                ? { filter: "drop-shadow(0 0 4px rgba(0,229,255,0.7))" }
+                : {}
+            }
+          >
+            <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
           Unload Medical Items
         </button>
       </div>
