@@ -276,7 +276,7 @@ export default function RobotControlPage() {
                 <span className="text-sm text-gray-600">Mode:</span>
                 <button
                   onClick={toggleMode}
-                  disabled={!isConnected || !robot.isOnline}
+                  disabled={!isConnected}
                   className={`px-3 py-1 rounded-full text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                     currentMode === 'manual'
                       ? 'bg-blue-600 text-white'
@@ -439,7 +439,7 @@ export default function RobotControlPage() {
                       : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('forward')}
-                  disabled={!isConnected || !robot.isOnline || currentMode === 'auto'}
+                  disabled={!isConnected || currentMode === 'auto'}
                 >
                   🡑
                 </button>
@@ -452,7 +452,7 @@ export default function RobotControlPage() {
                       : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('left')}
-                  disabled={!isConnected || !robot.isOnline || currentMode === 'auto'}
+                  disabled={!isConnected || currentMode === 'auto'}
                 >
                   🡐
                 </button>
@@ -470,7 +470,7 @@ export default function RobotControlPage() {
                       : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('right')}
-                  disabled={!isConnected || !robot.isOnline || currentMode === 'auto'}
+                  disabled={!isConnected || currentMode === 'auto'}
                 >
                   🡒
                 </button>
@@ -483,7 +483,7 @@ export default function RobotControlPage() {
                       : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('backward')}
-                  disabled={!isConnected || !robot.isOnline || currentMode === 'auto'}
+                  disabled={!isConnected || currentMode === 'auto'}
                 >
                   🡓
                 </button>
@@ -494,7 +494,7 @@ export default function RobotControlPage() {
               <div className="mt-4">
                 <button
                   onClick={capturePanoramicImage}
-                  disabled={!isConnected || !robot.isOnline || isPanoramicCapturing}
+                  disabled={!isConnected || isPanoramicCapturing}
                   className="w-full p-3 rounded-md border-2 bg-purple-500 text-white font-medium hover:bg-purple-600 border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isPanoramicCapturing ? '📸 Capturing...' : '📸 360° Panoramic'}
