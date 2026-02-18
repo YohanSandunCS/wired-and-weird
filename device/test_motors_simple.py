@@ -100,6 +100,9 @@ def main():
     print("SIMPLE MOTOR TEST")
     print("=" * 60)
     
+    left_pwm = None
+    right_pwm = None
+    
     try:
         # Setup
         left_pwm, right_pwm = setup_gpio()
@@ -155,15 +158,25 @@ def main():
         traceback.print_exc()
     
     finally:
-        # Cleanup
+        # Cleanup - IMPORTANT: Stop PWM before GPIO.cleanup()
         print("\nCleaning up GPIO...")
+        if left_pwm is not None:
+            try:
+                left_pwm.stop()
+            except Exception as e:
+                print(f"Warning: Error stopping left PWM: {e}")
+        
+        if right_pwm is not None:
+            try:
+                right_pwm.stop()
+            except Exception as e:
+                print(f"Warning: Error stopping right PWM: {e}")
+        
         try:
-            stop_motors(left_pwm, right_pwm)
-            left_pwm.stop()
-            right_pwm.stop()
-        except:
-            pass
-        GPIO.cleanup()
+            GPIO.cleanup()
+        except Exception as e:
+            print(f"Warning: Error during GPIO cleanup: {e}")
+        
         print("Done!")
 
 if __name__ == "__main__":
