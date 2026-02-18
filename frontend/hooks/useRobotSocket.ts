@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { PingMessage, PongMessage, LogEntry, TelemetryMessage, VisionFrameMessage } from '@/types/messages'
+import { PingMessage, PongMessage, LogEntry, TelemetryMessage, VisionFrameMessage, PanoramicImageMessage } from '@/types/messages'
 import useAppStore from '@/store/appStore'
 
 interface UseRobotSocketReturn {
@@ -9,11 +9,13 @@ interface UseRobotSocketReturn {
   logs: LogEntry[]
   lastMessage: any
   latestVisionFrame: VisionFrameMessage | null
+  latestPanoramicImage: PanoramicImageMessage | null
   connect: () => void
   disconnect: () => void
   send: (data: any) => void
   ping: () => void
   clearLogs: () => void
+  clearPanoramicImage: () => void
 }
 
 export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => {
@@ -22,6 +24,7 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [lastMessage, setLastMessage] = useState<any>(null)
   const [latestVisionFrame, setLatestVisionFrame] = useState<VisionFrameMessage | null>(null)
+  const [latestPanoramicImage, setLatestPanoramicImage] = useState<PanoramicImageMessage | null>(null)
   const pendingPingsRef = useRef<Map<number, number>>(new Map())
   
   const { updateRobotStatus, updateRobotBattery } = useAppStore()
@@ -111,6 +114,10 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
           } else if (data.type === 'vision_frame' && data.robotId === robotId) {
             // Handle vision frame (no logging to reduce spam)
             setLatestVisionFrame(data)
+          } else if (data.type === 'panoramic_image' && data.robotId === robotId) {
+            // Handle panoramic image
+            setLatestPanoramicImage(data)
+            addLog('Panoramic image received', 'success')
           } else if (data.type === 'error' && data.robotId === robotId) {
             // Robot is offline - error response received
             if (robotId) {
@@ -191,6 +198,10 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
     setLogs([])
   }, [])
 
+  const clearPanoramicImage = useCallback(() => {
+    setLatestPanoramicImage(null)
+  }, [])
+
   // Cleanup on unmount or robotId change
   useEffect(() => {
     return () => {
@@ -212,10 +223,12 @@ export const useRobotSocket = (robotId: string | null): UseRobotSocketReturn => 
     logs,
     lastMessage,
     latestVisionFrame,
+    latestPanoramicImage,
     connect,
     disconnect,
     send,
     ping,
     clearLogs,
+    clearPanoramicImage,
   }
 }
