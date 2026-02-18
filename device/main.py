@@ -296,19 +296,34 @@ class MediRunnerRobot:
         self.running = False
         
         if self.motors:
-            self.motors.cleanup()
+            try:
+                self.motors.cleanup()
+            except Exception as e:
+                print(f"[Main] Error cleaning up motors: {e}")
         
         if self.sensors:
-            self.sensors.cleanup()
+            try:
+                self.sensors.cleanup()
+            except Exception as e:
+                print(f"[Main] Error cleaning up sensors: {e}")
         
         if self.camera:
-            self.camera.cleanup()
+            try:
+                self.camera.cleanup()
+            except Exception as e:
+                print(f"[Main] Error cleaning up camera: {e}")
         
         if self.buzzer:
-            self.buzzer.cleanup()
+            try:
+                self.buzzer.cleanup()
+            except Exception as e:
+                print(f"[Main] Error cleaning up buzzer: {e}")
         
-        # Clean up GPIO
-        GPIO.cleanup()
+        # Clean up GPIO - must be done after all PWM objects are stopped
+        try:
+            GPIO.cleanup()
+        except Exception as e:
+            print(f"[Main] Error during GPIO cleanup: {e}")
         
         print("[Main] Cleanup complete. Goodbye!")
 

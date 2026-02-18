@@ -127,8 +127,23 @@ class MotorController:
     
     def cleanup(self):
         """Clean up GPIO resources"""
-        self.stop()
-        self.left_pwm.stop()
-        self.right_pwm.stop()
+        try:
+            self.stop()
+        except Exception as e:
+            if Config.DEBUG:
+                print(f"[MotorController] Error stopping motors: {e}")
+        
+        try:
+            self.left_pwm.stop()
+        except Exception as e:
+            if Config.DEBUG:
+                print(f"[MotorController] Error stopping left PWM: {e}")
+        
+        try:
+            self.right_pwm.stop()
+        except Exception as e:
+            if Config.DEBUG:
+                print(f"[MotorController] Error stopping right PWM: {e}")
+        
         if Config.DEBUG:
             print("[MotorController] Cleaned up")
