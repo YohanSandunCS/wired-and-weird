@@ -18,7 +18,10 @@ if __name__ == "__main__":
             host=settings.host,
             port=settings.port,
             reload=False,  # Disable reload in debug mode
-            log_level="debug"
+            log_level="debug",
+            ws_max_size=16 * 1024 * 1024,  # 16MB max WebSocket message size
+            ws_ping_interval=30,  # Send ping every 30 seconds
+            ws_ping_timeout=10  # Wait 10 seconds for pong
         )
     else:
         # Production mode: use string reference for hot reloading
@@ -26,5 +29,8 @@ if __name__ == "__main__":
             "app.main:app",
             host=settings.host,
             port=settings.port,
-            reload=settings.reload
+            reload=settings.reload,
+            ws_max_size=16 * 1024 * 1024,  # 16MB max WebSocket message size
+            ws_ping_interval=30,  # Send ping every 30 seconds
+            ws_ping_timeout=10  # Wait 10 seconds for pong
         )

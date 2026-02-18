@@ -215,14 +215,14 @@ class RobotClient:
             # For mock purposes, we'll just tile the frame horizontally 4 times
             panoramic_frame = cv2.hconcat([frame, frame, frame, frame])
             
-            # Resize to a reasonable panoramic size
-            panoramic_width = 1920
+            # Resize to a reasonable panoramic size (optimized for quality and transmission)
+            panoramic_width = 1800  # High quality panoramic image
             aspect_ratio = panoramic_frame.shape[1] / panoramic_frame.shape[0]
             panoramic_height = int(panoramic_width / aspect_ratio)
             panoramic_frame = cv2.resize(panoramic_frame, (panoramic_width, panoramic_height))
             
-            # Encode as high-quality JPEG
-            encode_params = [cv2.IMWRITE_JPEG_QUALITY, 90]
+            # Encode as JPEG with moderate quality (reduced from 90 to prevent large messages)
+            encode_params = [cv2.IMWRITE_JPEG_QUALITY, 70]
             success, encoded_frame = cv2.imencode('.jpg', panoramic_frame, encode_params)
             
             if not success:
@@ -249,8 +249,17 @@ class RobotClient:
             
             # Send the panoramic image
             if self.ws:
-                self.ws.send(json.dumps(msg))
-                print(f"Sent panoramic image: {panoramic_width}x{panoramic_height}")
+                print(f"Sending panoramic image: {panoramic_width}x{panoramic_height}, size: {len(b64_frame) / 1024:.1f} KB")
+                try:
+                    self.ws.send(json.dumps(msg))
+                    print(f"✓ Panoramic image sent successfully")
+                    # Small delay to ensure message is fully transmitted
+                    time.sleep(0.1)
+                except Exception as send_error:
+                    print(f"[ERROR] Failed to send panoramic image: {send_error}")
+                    # Try to reconnect if connection was lost
+                    if "Connection" in str(send_error) or "Broken pipe" in str(send_error):
+                        print("[INFO] Connection lost during panoramic transmission, will auto-reconnect")
             
         except Exception as e:
             print(f"Error generating panoramic image: {e}")
@@ -278,10 +287,12 @@ class RobotClient:
                 ping_interval = int(os.getenv("PING_INTERVAL", "30"))
                 ping_timeout = int(os.getenv("PING_TIMEOUT", "10"))
                 
+                # Increase max_size to handle large panoramic images (16MB)
                 self.ws.run_forever(
                     reconnect=reconnect_interval,  # Reconnect interval from env
                     ping_interval=ping_interval,   # Ping interval from env
-                    ping_timeout=ping_timeout      # Ping timeout from env
+                    ping_timeout=ping_timeout,     # Ping timeout from env
+                    max_size=16 * 1024 * 1024      # 16MB max message size
                 )
                 
                 # If we reach here, connection was closed normally

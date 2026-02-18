@@ -152,7 +152,8 @@ export default function PanoramicViewer({ imageUrl, onClose, captureTime, width,
       onClick={onClose}
     >
       <div 
-        className="relative w-full h-full max-w-7xl max-h-[90vh] m-8"
+        className="relative w-full max-w-7xl m-8"
+        style={{ height: '60vh' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
