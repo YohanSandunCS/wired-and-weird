@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import useAppStore from '@/store/appStore'
 import { useRobotSocket } from '@/hooks/useRobotSocket'
 import BatteryStatus from '@/components/BatteryStatus'
+import PanoramicViewer from '@/components/PanoramicViewer'
 
 export default function RobotAutonomousPage() {
   const router = useRouter()
@@ -17,14 +18,18 @@ export default function RobotAutonomousPage() {
   const logContainerRef = useRef<HTMLDivElement>(null)
   const isMouseOnScrollbar = useRef(false)
   const [autoCommandSent, setAutoCommandSent] = useState(false)
+  const [showPanoramicModal, setShowPanoramicModal] = useState(false)
+  const [isPanoramicCapturing, setIsPanoramicCapturing] = useState(false)
   
   const {
     isConnected,
     logs,
     latestVisionFrame,
+    latestPanoramicImage,
     connect,
     disconnect,
     send,
+    clearPanoramicImage,
   } = useRobotSocket(robotId)
 
   // Redirect if not authenticated or not logged in or no robot
@@ -68,6 +73,32 @@ export default function RobotAutonomousPage() {
       console.log('Sent autonomous mode command:', command)
     }
   }, [isConnected, robotId, send, autoCommandSent])
+
+  const capturePanoramicImage = () => {
+    if (!isConnected || !robotId) return
+    
+    setIsPanoramicCapturing(true)
+    
+    const command = {
+      type: 'command',
+      robotId,
+      payload: {
+        action: 'panoramic'
+      },
+      timestamp: Date.now()
+    }
+    
+    send(command)
+    console.log('Sent panoramic capture command:', command)
+  }
+
+  // Handle panoramic image response
+  useEffect(() => {
+    if (latestPanoramicImage) {
+      setIsPanoramicCapturing(false)
+      setShowPanoramicModal(true)
+    }
+  }, [latestPanoramicImage])
 
   // Auto-scroll for logs
   useEffect(() => {
@@ -258,6 +289,17 @@ export default function RobotAutonomousPage() {
                     {isConnected ? '✓ Active' : '✗ Inactive'}
                   </span>
                 </div>
+              </div>
+              
+              {/* Panoramic Capture Button */}
+              <div className="mt-6">
+                <button
+                  onClick={capturePanoramicImage}
+                  disabled={!isConnected || !robot.isOnline || isPanoramicCapturing}
+                  className="w-full p-3 rounded-md border-2 bg-purple-500 text-white font-medium hover:bg-purple-600 border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isPanoramicCapturing ? '📸 Capturing...' : '📸 360° Panoramic'}
+                </button>
               </div>
             </div>
 
