@@ -1,30 +1,34 @@
-'use client'
+"use client";
 
-import { useEffect, useState, useCallback, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import useAppStore from '@/store/appStore'
-import { useRobotSocket } from '@/hooks/useRobotSocket'
-import BatteryStatus from '@/components/BatteryStatus'
-import PanoramicViewer from '@/components/PanoramicViewer'
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import useAppStore from "@/store/appStore";
+import { useRobotSocket } from "@/hooks/useRobotSocket";
+import BatteryStatus from "@/components/BatteryStatus";
+import PanoramicViewer from "@/components/PanoramicViewer";
 
 export default function RobotControlPage() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const robotId = searchParams.get('robotId')
-  
-  const { teamSession, robots, isAuthenticated } = useAppStore()
-  const robot = robots.find(r => r.robotId === robotId)
-  
-  const [pressedKeys, setPressedKeys] = useState(new Set<string>())
-  const [commandHistory, setCommandHistory] = useState<Array<{id: string, command: string, timestamp: number}>>([])
-  const [streamStatus, setStreamStatus] = useState<'loading' | 'connected' | 'error'>('loading')
-  const [showPanoramicModal, setShowPanoramicModal] = useState(false)
-  const [isPanoramicCapturing, setIsPanoramicCapturing] = useState(false)
-  const [currentMode, setCurrentMode] = useState<'manual' | 'auto'>('manual')
-  const [manualCommandSent, setManualCommandSent] = useState(false)
-  const logContainerRef = useRef<HTMLDivElement>(null)
-  const isMouseOnScrollbar = useRef(false)
-  
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const robotId = searchParams.get("robotId");
+
+  const { teamSession, robots, isAuthenticated } = useAppStore();
+  const robot = robots.find((r) => r.robotId === robotId);
+
+  const [pressedKeys, setPressedKeys] = useState(new Set<string>());
+  const [commandHistory, setCommandHistory] = useState<
+    Array<{ id: string; command: string; timestamp: number }>
+  >([]);
+  const [streamStatus, setStreamStatus] = useState<
+    "loading" | "connected" | "error"
+  >("loading");
+  const [showPanoramicModal, setShowPanoramicModal] = useState(false);
+  const [isPanoramicCapturing, setIsPanoramicCapturing] = useState(false);
+  const [currentMode, setCurrentMode] = useState<"manual" | "auto">("manual");
+  const [manualCommandSent, setManualCommandSent] = useState(false);
+  const logContainerRef = useRef<HTMLDivElement>(null);
+  const isMouseOnScrollbar = useRef(false);
+
   const {
     isConnected,
     logs,
@@ -34,327 +38,380 @@ export default function RobotControlPage() {
     disconnect,
     send,
     clearPanoramicImage,
-  } = useRobotSocket(robotId)
+  } = useRobotSocket(robotId);
 
   // Redirect if not authenticated or not logged in or no robot
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push('/face-login')
-      return
+      router.push("/face-login");
+      return;
     }
     if (!teamSession.loggedIn) {
-      router.push('/')
-      return
+      router.push("/");
+      return;
     }
     if (!robotId || !robot) {
-      router.push('/console')
-      return
+      router.push("/console");
+      return;
     }
-  }, [isAuthenticated, teamSession.loggedIn, robotId, robot, router])
+  }, [isAuthenticated, teamSession.loggedIn, robotId, robot, router]);
 
   // Auto-connect when component mounts
   useEffect(() => {
     if (robotId && !isConnected) {
-      connect()
+      connect();
     }
-  }, [robotId, isConnected, connect])
+  }, [robotId, isConnected, connect]);
 
   // Send manual mode command once connected
   useEffect(() => {
     if (isConnected && robotId && !manualCommandSent) {
       const command = {
-        type: 'command',
+        type: "command",
         robotId,
         payload: {
-          action: 'manual'
+          action: "manual",
         },
-        timestamp: Date.now()
-      }
-      
-      send(command)
-      setManualCommandSent(true)
-      
-      console.log('Sent manual mode command:', command)
-    }
-  }, [isConnected, robotId, send, manualCommandSent])
+        timestamp: Date.now(),
+      };
 
-  const sendMovementCommand = useCallback((direction: string) => {
-    if (!isConnected || !robotId) return
-    
-    const command = {
-      type: 'command',
-      robotId,
-      payload: {
-        action: 'move',
-        direction: direction
-      },
-      timestamp: Date.now()
+      send(command);
+      setManualCommandSent(true);
+
+      console.log("Sent manual mode command:", command);
     }
-    
-    send(command)
-    
-    // Add to command history
-    const historyEntry = {
-      id: Date.now().toString(),
-      command: `Move ${direction}`,
-      timestamp: Date.now()
-    }
-    setCommandHistory(prev => [...prev, historyEntry].slice(-20)) // Keep last 20 commands
-  }, [isConnected, robotId, send])
+  }, [isConnected, robotId, send, manualCommandSent]);
+
+  const sendMovementCommand = useCallback(
+    (direction: string) => {
+      if (!isConnected || !robotId) return;
+
+      const command = {
+        type: "command",
+        robotId,
+        payload: {
+          action: "move",
+          direction: direction,
+        },
+        timestamp: Date.now(),
+      };
+
+      send(command);
+
+      // Add to command history
+      const historyEntry = {
+        id: Date.now().toString(),
+        command: `Move ${direction}`,
+        timestamp: Date.now(),
+      };
+      setCommandHistory((prev) => [...prev, historyEntry].slice(-20)); // Keep last 20 commands
+    },
+    [isConnected, robotId, send],
+  );
 
   const sendStopCommand = useCallback(() => {
-    if (!isConnected || !robotId) return
-    
+    if (!isConnected || !robotId) return;
+
     const command = {
-      type: 'command',
+      type: "command",
       robotId,
       payload: {
-        action: 'stop'
+        action: "stop",
       },
-      timestamp: Date.now()
-    }
-    
-    send(command)
-    
+      timestamp: Date.now(),
+    };
+
+    send(command);
+
     const historyEntry = {
       id: Date.now().toString(),
-      command: 'Stop',
-      timestamp: Date.now()
-    }
-    setCommandHistory(prev => [...prev, historyEntry].slice(-20))
-  }, [isConnected, robotId, send])
+      command: "Stop",
+      timestamp: Date.now(),
+    };
+    setCommandHistory((prev) => [...prev, historyEntry].slice(-20));
+  }, [isConnected, robotId, send]);
 
   const capturePanoramicImage = useCallback(() => {
-    if (!isConnected || !robotId) return
-    
-    setIsPanoramicCapturing(true)
-    
+    if (!isConnected || !robotId) return;
+
+    setIsPanoramicCapturing(true);
+
     const command = {
-      type: 'command',
+      type: "command",
       robotId,
       payload: {
-        action: 'panoramic'
+        action: "panoramic",
       },
-      timestamp: Date.now()
-    }
-    
-    send(command)
-    
+      timestamp: Date.now(),
+    };
+
+    send(command);
+
     const historyEntry = {
       id: Date.now().toString(),
-      command: 'Capture Panoramic Image',
-      timestamp: Date.now()
-    }
-    setCommandHistory(prev => [...prev, historyEntry].slice(-20))
-  }, [isConnected, robotId, send])
+      command: "Capture Panoramic Image",
+      timestamp: Date.now(),
+    };
+    setCommandHistory((prev) => [...prev, historyEntry].slice(-20));
+  }, [isConnected, robotId, send]);
 
   const toggleMode = useCallback(() => {
-    if (!isConnected || !robotId) return
-    
-    const newMode = currentMode === 'manual' ? 'auto' : 'manual'
-    
+    if (!isConnected || !robotId) return;
+
+    const newMode = currentMode === "manual" ? "auto" : "manual";
+
     const command = {
-      type: 'command',
+      type: "command",
       robotId,
       payload: {
-        action: newMode === 'auto' ? 'auto' : 'manual'
+        action: newMode === "auto" ? "auto" : "manual",
       },
-      timestamp: Date.now()
-    }
-    
-    send(command)
-    setCurrentMode(newMode)
-    
+      timestamp: Date.now(),
+    };
+
+    send(command);
+    setCurrentMode(newMode);
+
     const historyEntry = {
       id: Date.now().toString(),
-      command: `Switch to ${newMode === 'auto' ? 'Autonomous' : 'Manual'} Mode`,
-      timestamp: Date.now()
-    }
-    setCommandHistory(prev => [...prev, historyEntry].slice(-20))
-  }, [isConnected, robotId, send, currentMode])
+      command: `Switch to ${newMode === "auto" ? "Autonomous" : "Manual"} Mode`,
+      timestamp: Date.now(),
+    };
+    setCommandHistory((prev) => [...prev, historyEntry].slice(-20));
+  }, [isConnected, robotId, send, currentMode]);
 
   // Handle panoramic image response
   useEffect(() => {
     if (latestPanoramicImage) {
-      setIsPanoramicCapturing(false)
-      setShowPanoramicModal(true)
+      setIsPanoramicCapturing(false);
+      setShowPanoramicModal(true);
     }
-  }, [latestPanoramicImage])
+  }, [latestPanoramicImage]);
 
   // Auto-scroll for logs
   useEffect(() => {
-    const logContainer = logContainerRef.current
+    const logContainer = logContainerRef.current;
     if (logContainer && !isMouseOnScrollbar.current) {
-      logContainer.scrollTop = logContainer.scrollHeight
+      logContainer.scrollTop = logContainer.scrollHeight;
     }
-  }, [logs])
+  }, [logs]);
 
   // Handle keyboard events
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Don't handle keyboard in auto mode
-      if (currentMode === 'auto') return
-      
+      if (currentMode === "auto") return;
+
       // Prevent default behavior for arrow keys
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(event.code)) {
-        event.preventDefault()
+      if (
+        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(
+          event.code,
+        )
+      ) {
+        event.preventDefault();
       }
 
-      if (pressedKeys.has(event.code)) return // Key already pressed
+      if (pressedKeys.has(event.code)) return; // Key already pressed
 
-      const newPressedKeys = new Set(pressedKeys)
-      newPressedKeys.add(event.code)
-      setPressedKeys(newPressedKeys)
+      const newPressedKeys = new Set(pressedKeys);
+      newPressedKeys.add(event.code);
+      setPressedKeys(newPressedKeys);
 
       switch (event.code) {
-        case 'ArrowUp':
-          sendMovementCommand('forward')
-          break
-        case 'ArrowDown':
-          sendMovementCommand('backward')
-          break
-        case 'ArrowLeft':
-          sendMovementCommand('left')
-          break
-        case 'ArrowRight':
-          sendMovementCommand('right')
-          break
-        case 'Space':
-          sendStopCommand()
-          break
+        case "ArrowUp":
+          sendMovementCommand("forward");
+          break;
+        case "ArrowDown":
+          sendMovementCommand("backward");
+          break;
+        case "ArrowLeft":
+          sendMovementCommand("left");
+          break;
+        case "ArrowRight":
+          sendMovementCommand("right");
+          break;
+        case "Space":
+          sendStopCommand();
+          break;
       }
-    }
+    };
 
     const handleKeyUp = (event: KeyboardEvent) => {
       // Don't handle keyboard in auto mode
-      if (currentMode === 'auto') return
-      
-      const newPressedKeys = new Set(pressedKeys)
-      newPressedKeys.delete(event.code)
-      setPressedKeys(newPressedKeys)
+      if (currentMode === "auto") return;
+
+      const newPressedKeys = new Set(pressedKeys);
+      newPressedKeys.delete(event.code);
+      setPressedKeys(newPressedKeys);
 
       // Send stop command when arrow key is released
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
-        sendStopCommand()
+      if (
+        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)
+      ) {
+        sendStopCommand();
       }
-    }
+    };
 
     // Add focus to window to ensure we capture key events
-    window.focus()
-    
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
+    window.focus();
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
-    }
-  }, [pressedKeys, sendMovementCommand, sendStopCommand, currentMode])
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [pressedKeys, sendMovementCommand, sendStopCommand, currentMode]);
 
   useEffect(() => {
-    const logContainer = logContainerRef.current
+    const logContainer = logContainerRef.current;
 
     const handleMouseDown = () => {
-      isMouseOnScrollbar.current = true
-    }
+      isMouseOnScrollbar.current = true;
+    };
     const handleMouseUp = () => {
-      isMouseOnScrollbar.current = false
-    }
+      isMouseOnScrollbar.current = false;
+    };
 
     if (logContainer) {
-      logContainer.addEventListener('mousedown', handleMouseDown)
-      window.addEventListener('mouseup', handleMouseUp)
+      logContainer.addEventListener("mousedown", handleMouseDown);
+      window.addEventListener("mouseup", handleMouseUp);
     }
 
     return () => {
       if (logContainer) {
-        logContainer.removeEventListener('mousedown', handleMouseDown)
+        logContainer.removeEventListener("mousedown", handleMouseDown);
       }
-      window.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [])
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
 
   if (!teamSession.loggedIn || !robotId || !robot) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center relative z-10">
+        <div className="text-gray-400">Loading...</div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen flex flex-col relative z-10 overflow-y-auto">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-semibold text-gray-900">
-                Robot Control Panel
-              </h1>
-              <div className="flex items-center space-x-2 ml-4">
-                <span className="text-sm text-gray-600">Mode:</span>
-                <button
-                  onClick={toggleMode}
-                  disabled={!isConnected}
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                    currentMode === 'manual'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-purple-600 text-white'
-                  }`}
+      <header
+        className="border-b border-cyan-500/20"
+        style={{
+          background: "rgba(6,12,40,0.95)",
+          backdropFilter: "blur(20px) saturate(1.4)",
+          borderRadius: 0,
+          boxShadow:
+            "0 2px 32px rgba(0,229,255,0.07), 0 1px 0 rgba(0,229,255,0.12)",
+        }}
+      >
+        <div className="max-w-full mx-auto px-6 lg:px-10">
+          <div className="flex items-center justify-between py-4">
+            {/* Left: back + title */}
+            <div className="flex items-center gap-5">
+              <button
+                onClick={() => router.push("/console")}
+                className="flex items-center gap-2 text-cyan-400 hover:text-cyan-200 transition-colors text-sm font-medium group"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="group-hover:-translate-x-0.5 transition-transform"
                 >
-                  {currentMode === 'manual' ? '🎮 Manual' : '🤖 Auto'}
-                </button>
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+                Back to Console
+              </button>
+              <div className="w-px h-8 bg-cyan-500/25" />
+              <div>
+                <h1 className="text-2xl font-bold text-white tracking-wide glow-heading leading-tight">
+                  Robot Control Panel
+                </h1>
+                <p className="text-xs text-cyan-400/70 mt-0.5 tracking-widest uppercase">
+                  Medi Runner — Live Control Interface
+                </p>
               </div>
+              <div className="w-px h-8 bg-cyan-500/25" />
+              {/* Mode Toggle */}
+              <button
+                onClick={toggleMode}
+                disabled={!isConnected}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  currentMode === "manual"
+                    ? "bg-cyan-500/15 border-cyan-400/50 text-cyan-300 hover:bg-cyan-500/25"
+                    : "bg-purple-500/15 border-purple-400/50 text-purple-300 hover:bg-purple-500/25"
+                }`}
+              >
+                {currentMode === "manual" ? "🎮 Manual" : "🤖 Auto"}
+              </button>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                {robot.name || robot.robotId}
-              </span>
-              <BatteryStatus 
-                battery={robot.battery} 
+
+            {/* Right: status pills + robot info + battery */}
+            <div className="flex items-center gap-3">
+              <div
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border tracking-wide ${
+                  isConnected
+                    ? "bg-cyan-500/10 border-cyan-400/40 text-cyan-300"
+                    : "bg-red-500/10 border-red-400/40 text-red-300"
+                }`}
+              >
+                <div
+                  className={`w-2 h-2 rounded-full ${isConnected ? "bg-cyan-400 shadow-[0_0_6px_rgba(0,229,255,0.9)]" : "bg-red-400 shadow-[0_0_6px_rgba(239,68,68,0.9)]"}`}
+                />
+                WebSocket: {isConnected ? "Connected" : "Disconnected"}
+              </div>
+              <div
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border tracking-wide ${
+                  robot.isOnline
+                    ? "bg-emerald-500/10 border-emerald-400/40 text-emerald-300"
+                    : "bg-red-500/10 border-red-400/40 text-red-300"
+                }`}
+              >
+                <div
+                  className={`w-2 h-2 rounded-full ${robot.isOnline ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]" : "bg-red-400 shadow-[0_0_6px_rgba(239,68,68,0.9)]"}`}
+                />
+                Robot: {robot.isOnline ? "Online" : "Offline"}
+              </div>
+              <div className="w-px h-6 bg-cyan-500/25" />
+              <div className="text-right">
+                <p className="text-sm font-semibold text-white leading-tight">
+                  {robot.name || robot.robotId}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Unit ID: {robot.robotId}
+                </p>
+              </div>
+              <BatteryStatus
+                battery={robot.battery}
                 lastUpdate={robot.lastTelemetryUpdate}
                 size="sm"
               />
-              <div className={`flex items-center space-x-1 text-xs px-2 py-1 rounded-full border ${
-                isConnected 
-                  ? 'bg-green-50 border-green-200 text-green-700' 
-                  : 'bg-red-50 border-red-200 text-red-700'
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <span className="font-medium">
-                  WebSocket: {isConnected ? 'Connected' : 'Disconnected'}
-                </span>
-              </div>
-              <div className={`flex items-center space-x-1 text-xs px-2 py-1 rounded-full border ${
-                robot.isOnline
-                  ? 'bg-green-50 border-green-200 text-green-700'
-                  : 'bg-red-50 border-red-200 text-red-700'
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${robot.isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <span className="font-medium">
-                  Robot: {robot.isOnline ? 'Online' : 'Offline'}
-                </span>
-              </div>
-              <button
-                onClick={() => router.push('/console')}
-                className="px-3 py-2 rounded-md bg-gray-600 text-white text-sm font-medium hover:bg-gray-700 transition-colors"
-              >
-                ✕ Exit
-              </button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow flex" style={{ width: '1216px', height: '792px' }}>
-        <div className="flex flex-grow gap-8">
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        {/* Row 1: Video | D-Pad */}
+        <div className="flex gap-8 items-start">
           {/* Main Content: Live Video Feed */}
-          <div className="w-3/4 flex flex-col space-y-6">
-            <div className="bg-white rounded-lg shadow-sm flex-grow flex flex-col p-0 overflow-hidden">
+          <div className="w-3/5 flex flex-col space-y-6">
+            <div
+              className="glass-card flex flex-col p-0 overflow-hidden"
+              style={{ minHeight: "520px" }}
+            >
               <div className="relative flex-grow">
                 {/* Video Feed */}
-                <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+                <div className="absolute inset-0 bg-[#0B0F2A] flex items-center justify-center">
                   {!isConnected ? (
                     <div className="text-gray-500 text-center">
                       <div className="text-gray-400 mb-2 text-2xl">📹</div>
@@ -362,8 +419,10 @@ export default function RobotControlPage() {
                     </div>
                   ) : !latestVisionFrame ? (
                     <div className="text-gray-500 text-center">
-                      <div className="text-gray-400 mb-2 text-2xl">⏳</div>
-                      <div className="text-sm">Waiting for video stream...</div>
+                      <div className="text-gray-500 mb-2 text-2xl">⏳</div>
+                      <div className="text-sm text-gray-500">
+                        Waiting for video stream...
+                      </div>
                     </div>
                   ) : (
                     <img
@@ -371,7 +430,7 @@ export default function RobotControlPage() {
                       alt="Robot Camera Feed"
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        console.error('Failed to load vision frame:', e)
+                        console.error("Failed to load vision frame:", e);
                       }}
                     />
                   )}
@@ -386,7 +445,8 @@ export default function RobotControlPage() {
                     </h2>
                     {latestVisionFrame && (
                       <div className="text-sm text-white bg-[#00000061] px-3 py-1 rounded-md">
-                        {latestVisionFrame.payload.width}×{latestVisionFrame.payload.height} • 
+                        {latestVisionFrame.payload.width}×
+                        {latestVisionFrame.payload.height} •
                         {latestVisionFrame.payload.quality}% quality
                       </div>
                     )}
@@ -396,160 +456,211 @@ export default function RobotControlPage() {
                   {latestVisionFrame && (
                     <div className="flex items-end">
                       <div className="bg-[#00000061] text-white text-xs px-2 py-1 rounded">
-                        {new Date(latestVisionFrame.timestamp).toLocaleTimeString()}
+                        {new Date(
+                          latestVisionFrame.timestamp,
+                        ).toLocaleTimeString()}
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-              
-              {currentMode === 'manual' && (
-                <div className="p-6 bg-white border-t border-gray-200">
-                  <div className="text-xs text-gray-500 space-y-2">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-semibold text-gray-700">⌨️ Keyboard Controls</span>
-                      {isConnected && (
-                        <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800 font-medium">
-                          Active
-                        </span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm pt-2">
-                      <div className="flex items-center space-x-2">
-                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
-                          pressedKeys.has('ArrowUp') 
-                            ? 'bg-blue-500 text-white border-blue-600' 
-                            : 'bg-gray-100 text-gray-800 border-gray-200'
-                        }`}>↑</kbd>
-                        <span className="text-gray-800">Forward</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
-                          pressedKeys.has('ArrowDown') 
-                            ? 'bg-blue-500 text-white border-blue-600' 
-                            : 'bg-gray-100 text-gray-800 border-gray-200'
-                        }`}>↓</kbd>
-                        <span className="text-gray-800">Backward</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
-                          pressedKeys.has('ArrowLeft') 
-                            ? 'bg-blue-500 text-white border-blue-600' 
-                            : 'bg-gray-100 text-gray-800 border-gray-200'
-                        }`}>←</kbd>
-                        <span className="text-gray-800">Turn Left</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
-                          pressedKeys.has('ArrowRight') 
-                            ? 'bg-blue-500 text-white border-blue-600' 
-                            : 'bg-gray-100 text-gray-800 border-gray-200'
-                        }`}>→</kbd>
-                        <span className="text-gray-800">Turn Right</span>
-                      </div>
-                      <div className="flex items-center space-x-2 col-span-2">
-                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
-                          pressedKeys.has('Space') 
-                            ? 'bg-red-500 text-white border-red-600' 
-                            : 'bg-gray-100 text-gray-800 border-gray-200'
-                        }`}>Space</kbd>
-                        <span className="text-gray-800">Emergency Stop</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="w-1/4 flex flex-col space-y-6">
-            {/* Input Visualizer */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-medium text-gray-900">D-Pad</h2>
-                {currentMode === 'auto' && (
-                  <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 font-medium">
+          {/* D-Pad */}
+          <div className="w-2/5">
+            <div className="glass-card p-6 flex flex-col items-center">
+              {currentMode === "auto" && (
+                <div className="w-full mb-3 text-center">
+                  <span className="text-xs px-3 py-1 rounded-full bg-yellow-500/15 border border-yellow-400/30 text-yellow-300 font-medium">
                     Controls Disabled (Auto Mode)
                   </span>
-                )}
-              </div>
-              <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
-                <div></div>
+                </div>
+              )}
+              {/* Fixed-size square D-Pad */}
+              <div
+                className="relative"
+                style={{ width: "500px", height: "500px" }}
+              >
+                {/* Up */}
                 <button
-                  className={`p-4 rounded-md border-2 transition-colors ${
-                    pressedKeys.has('ArrowUp') 
-                      ? 'bg-blue-500 text-white border-blue-500' 
-                      : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
+                  onClick={() => sendMovementCommand("forward")}
+                  disabled={
+                    !isConnected || !robot.isOnline || currentMode === "auto"
+                  }
+                  className={`absolute left-1/2 top-0 -translate-x-1/2 flex items-center justify-center rounded-2xl transition-all duration-150 disabled:opacity-40 ${
+                    pressedKeys.has("ArrowUp")
+                      ? "bg-cyan-400/25 text-cyan-100"
+                      : "bg-[#071a2e] text-cyan-300 hover:bg-cyan-500/15"
                   }`}
-                  onClick={() => sendMovementCommand('forward')}
-                  disabled={!isConnected || currentMode === 'auto'}
+                  style={{
+                    width: "148px",
+                    height: "148px",
+                    border: "3px solid rgba(0,229,255,0.85)",
+                    boxShadow: pressedKeys.has("ArrowUp")
+                      ? "0 0 28px rgba(0,229,255,1), 0 0 56px rgba(0,229,255,0.45), inset 0 0 20px rgba(0,229,255,0.15)"
+                      : "0 0 12px rgba(0,229,255,0.35), inset 0 0 10px rgba(0,229,255,0.07)",
+                  }}
                 >
-                  🡑
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="64"
+                    height="64"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="18 15 12 9 6 15" />
+                  </svg>
                 </button>
-                <div></div>
-                
+                {/* Left */}
                 <button
-                  className={`p-4 rounded-md border-2 transition-colors ${
-                    pressedKeys.has('ArrowLeft') 
-                      ? 'bg-blue-500 text-white border-blue-500' 
-                      : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
+                  onClick={() => sendMovementCommand("left")}
+                  disabled={
+                    !isConnected || !robot.isOnline || currentMode === "auto"
+                  }
+                  className={`absolute top-1/2 left-0 -translate-y-1/2 flex items-center justify-center rounded-2xl transition-all duration-150 disabled:opacity-40 ${
+                    pressedKeys.has("ArrowLeft")
+                      ? "bg-cyan-400/25 text-cyan-100"
+                      : "bg-[#071a2e] text-cyan-300 hover:bg-cyan-500/15"
                   }`}
-                  onClick={() => sendMovementCommand('left')}
-                  disabled={!isConnected || currentMode === 'auto'}
+                  style={{
+                    width: "148px",
+                    height: "148px",
+                    border: "3px solid rgba(0,229,255,0.85)",
+                    boxShadow: pressedKeys.has("ArrowLeft")
+                      ? "0 0 28px rgba(0,229,255,1), 0 0 56px rgba(0,229,255,0.45), inset 0 0 20px rgba(0,229,255,0.15)"
+                      : "0 0 12px rgba(0,229,255,0.35), inset 0 0 10px rgba(0,229,255,0.07)",
+                  }}
                 >
-                  🡐
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="64"
+                    height="64"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
                 </button>
+                {/* Center STOP */}
                 <button
-                  className="p-4 rounded-md border-2 bg-red-500 text-white text-sm hover:bg-red-600 border-red-500"
                   onClick={sendStopCommand}
-                  disabled={!isConnected || currentMode === 'auto'}
+                  disabled={!isConnected || currentMode === "auto"}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center rounded-full text-white font-black tracking-widest transition-all duration-150 disabled:opacity-40 hover:bg-red-500/90"
+                  style={{
+                    width: "140px",
+                    height: "140px",
+                    fontSize: "1.1rem",
+                    border: "3px solid rgba(239,68,68,0.9)",
+                    background: "rgba(153,27,27,0.75)",
+                    boxShadow:
+                      "0 0 22px rgba(239,68,68,0.7), 0 0 44px rgba(239,68,68,0.3), inset 0 0 16px rgba(239,68,68,0.15)",
+                  }}
                 >
                   STOP
                 </button>
+                {/* Right */}
                 <button
-                  className={`p-4 rounded-md border-2 transition-colors ${
-                    pressedKeys.has('ArrowRight') 
-                      ? 'bg-blue-500 text-white border-blue-500' 
-                      : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
+                  onClick={() => sendMovementCommand("right")}
+                  disabled={
+                    !isConnected || !robot.isOnline || currentMode === "auto"
+                  }
+                  className={`absolute top-1/2 right-0 -translate-y-1/2 flex items-center justify-center rounded-2xl transition-all duration-150 disabled:opacity-40 ${
+                    pressedKeys.has("ArrowRight")
+                      ? "bg-cyan-400/25 text-cyan-100"
+                      : "bg-[#071a2e] text-cyan-300 hover:bg-cyan-500/15"
                   }`}
-                  onClick={() => sendMovementCommand('right')}
-                  disabled={!isConnected || currentMode === 'auto'}
+                  style={{
+                    width: "148px",
+                    height: "148px",
+                    border: "3px solid rgba(0,229,255,0.85)",
+                    boxShadow: pressedKeys.has("ArrowRight")
+                      ? "0 0 28px rgba(0,229,255,1), 0 0 56px rgba(0,229,255,0.45), inset 0 0 20px rgba(0,229,255,0.15)"
+                      : "0 0 12px rgba(0,229,255,0.35), inset 0 0 10px rgba(0,229,255,0.07)",
+                  }}
                 >
-                  🡒
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="64"
+                    height="64"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
                 </button>
-                
-                <div></div>
+                {/* Down */}
                 <button
-                  className={`p-4 rounded-md border-2 transition-colors ${
-                    pressedKeys.has('ArrowDown') 
-                      ? 'bg-blue-500 text-white border-blue-500' 
-                      : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
+                  onClick={() => sendMovementCommand("backward")}
+                  disabled={
+                    !isConnected || !robot.isOnline || currentMode === "auto"
+                  }
+                  className={`absolute left-1/2 bottom-0 -translate-x-1/2 flex items-center justify-center rounded-2xl transition-all duration-150 disabled:opacity-40 ${
+                    pressedKeys.has("ArrowDown")
+                      ? "bg-cyan-400/25 text-cyan-100"
+                      : "bg-[#071a2e] text-cyan-300 hover:bg-cyan-500/15"
                   }`}
-                  onClick={() => sendMovementCommand('backward')}
-                  disabled={!isConnected || currentMode === 'auto'}
+                  style={{
+                    width: "148px",
+                    height: "148px",
+                    border: "3px solid rgba(0,229,255,0.85)",
+                    boxShadow: pressedKeys.has("ArrowDown")
+                      ? "0 0 28px rgba(0,229,255,1), 0 0 56px rgba(0,229,255,0.45), inset 0 0 20px rgba(0,229,255,0.15)"
+                      : "0 0 12px rgba(0,229,255,0.35), inset 0 0 10px rgba(0,229,255,0.07)",
+                  }}
                 >
-                  🡓
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="64"
+                    height="64"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
                 </button>
-                <div></div>
               </div>
-              
               {/* Panoramic Capture Button */}
-              <div className="mt-4">
+              <div className="mt-6 w-full max-w-xs">
                 <button
                   onClick={capturePanoramicImage}
                   disabled={!isConnected || isPanoramicCapturing}
-                  className="w-full p-3 rounded-md border-2 bg-purple-500 text-white font-medium hover:bg-purple-600 border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="w-full p-3 rounded-xl border border-purple-400/50 bg-purple-500/15 text-purple-300 font-medium hover:bg-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {isPanoramicCapturing ? '📸 Capturing...' : '📸 360° Panoramic'}
+                  {isPanoramicCapturing
+                    ? "📸 Capturing..."
+                    : "📸 360° Panoramic"}
                 </button>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Filtered Logs / Diagnostics */}
-            <div className="bg-gray-600 rounded-lg p-6 shadow-sm flex-grow relative">
-              <h2 className="text-lg font-medium text-white mb-4">Control Log</h2>
-              <div ref={logContainerRef} className="absolute left-3 right-3 bottom-3 bg-gray-600 text-gray-100 rounded-md p-3 overflow-y-auto text-xs font-mono log-scrollbar" style={{top: '4.75rem'}}>
+        {/* Row 2: Control Log | Keyboard Mapping */}
+        <div className="flex gap-8 items-start mt-8">
+          {/* Control Log */}
+          <div className="w-3/5">
+            <div className="glass-card p-6">
+              <h2 className="text-base font-semibold text-white mb-4 glow-heading">
+                Control Log
+              </h2>
+              <div
+                ref={logContainerRef}
+                className="bg-[#0a0e24] text-gray-100 rounded-xl p-3 overflow-y-auto text-xs font-mono log-scrollbar border border-cyan-500/10"
+                style={{ height: "280px" }}
+              >
                 {logs.length === 0 ? (
                   <div className="text-gray-400 italic">No logs yet...</div>
                 ) : (
@@ -559,11 +670,15 @@ export default function RobotControlPage() {
                         <span className="text-gray-400 w-20 flex-shrink-0">
                           {new Date(log.timestamp).toLocaleTimeString()}
                         </span>
-                        <span className={`flex-1 break-words overflow-hidden ${
-                          log.type === 'error' ? 'text-red-400' :
-                          log.type === 'success' ? 'text-green-400' :
-                          'text-gray-100'
-                        }`}>
+                        <span
+                          className={`flex-1 break-words overflow-hidden ${
+                            log.type === "error"
+                              ? "text-red-400"
+                              : log.type === "success"
+                                ? "text-green-400"
+                                : "text-gray-100"
+                          }`}
+                        >
                           {log.message}
                         </span>
                       </div>
@@ -573,11 +688,90 @@ export default function RobotControlPage() {
               </div>
             </div>
           </div>
+          {/* Keyboard Mapping */}
+          <div className="w-2/5">
+            <div className="glass-card p-6">
+              <h2 className="text-base font-semibold text-white mb-4 glow-heading">
+                Keyboard Mapping
+              </h2>
+              {currentMode === "auto" ? (
+                <div className="text-center py-4 text-yellow-300/70 text-sm">
+                  Keyboard disabled in Auto Mode
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-x-6 gap-y-5 text-base">
+                  <div className="flex items-center space-x-3">
+                    <kbd
+                      className={`px-4 py-2 text-base font-bold rounded-lg min-w-[2.5rem] text-center border transition-colors ${
+                        pressedKeys.has("ArrowUp")
+                          ? "bg-cyan-500 text-white border-cyan-600"
+                          : "text-cyan-300 bg-cyan-500/10 border-cyan-500/20"
+                      }`}
+                    >
+                      ↑
+                    </kbd>
+                    <span className="text-gray-300">Forward</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <kbd
+                      className={`px-4 py-2 text-base font-bold rounded-lg min-w-[2.5rem] text-center border transition-colors ${
+                        pressedKeys.has("ArrowDown")
+                          ? "bg-cyan-500 text-white border-cyan-600"
+                          : "text-cyan-300 bg-cyan-500/10 border-cyan-500/20"
+                      }`}
+                    >
+                      ↓
+                    </kbd>
+                    <span className="text-gray-300">Backward</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <kbd
+                      className={`px-4 py-2 text-base font-bold rounded-lg min-w-[2.5rem] text-center border transition-colors ${
+                        pressedKeys.has("ArrowLeft")
+                          ? "bg-cyan-500 text-white border-cyan-600"
+                          : "text-cyan-300 bg-cyan-500/10 border-cyan-500/20"
+                      }`}
+                    >
+                      ←
+                    </kbd>
+                    <span className="text-gray-300">Turn Left</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <kbd
+                      className={`px-4 py-2 text-base font-bold rounded-lg min-w-[2.5rem] text-center border transition-colors ${
+                        pressedKeys.has("ArrowRight")
+                          ? "bg-cyan-500 text-white border-cyan-600"
+                          : "text-cyan-300 bg-cyan-500/10 border-cyan-500/20"
+                      }`}
+                    >
+                      →
+                    </kbd>
+                    <span className="text-gray-300">Turn Right</span>
+                  </div>
+                  <div className="flex items-center space-x-3 col-span-2">
+                    <kbd
+                      className={`px-4 py-2 text-base font-bold rounded-lg border transition-colors ${
+                        pressedKeys.has("Space")
+                          ? "bg-red-500 text-white border-red-600"
+                          : "text-cyan-300 bg-cyan-500/10 border-cyan-500/20"
+                      }`}
+                    >
+                      Space
+                    </kbd>
+                    <span className="text-gray-300">Emergency Stop</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Footer */}
-      <footer className="bg-white shadow-sm border-t border-gray-200 p-4">
+      <footer
+        className="glass-card-light border-t border-cyan-500/10 p-4"
+        style={{ borderRadius: 0 }}
+      >
         <div className="max-w-7xl mx-auto text-center text-sm text-gray-500">
           MediRunner Robot Control Interface
         </div>
@@ -588,8 +782,8 @@ export default function RobotControlPage() {
         <PanoramicViewer
           imageUrl={`data:${latestPanoramicImage.payload.mime};base64,${latestPanoramicImage.payload.data}`}
           onClose={() => {
-            setShowPanoramicModal(false)
-            clearPanoramicImage()
+            setShowPanoramicModal(false);
+            clearPanoramicImage();
           }}
           captureTime={latestPanoramicImage.payload.captureTime}
           width={latestPanoramicImage.payload.width}
@@ -597,5 +791,5 @@ export default function RobotControlPage() {
         />
       )}
     </div>
-  )
+  );
 }
