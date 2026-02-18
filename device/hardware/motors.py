@@ -80,10 +80,10 @@ class MotorController:
         """Turn robot left"""
         speed = speed or Config.TURN_MOTOR_SPEED
         
-        GPIO.output(Config.MOTOR_LEFT_FORWARD, GPIO.LOW)
-        GPIO.output(Config.MOTOR_LEFT_BACKWARD, GPIO.HIGH)
-        GPIO.output(Config.MOTOR_RIGHT_FORWARD, GPIO.HIGH)
-        GPIO.output(Config.MOTOR_RIGHT_BACKWARD, GPIO.LOW)
+        GPIO.output(Config.MOTOR_LEFT_FORWARD, GPIO.HIGH)
+        GPIO.output(Config.MOTOR_LEFT_BACKWARD, GPIO.LOW)
+        GPIO.output(Config.MOTOR_RIGHT_FORWARD, GPIO.LOW)
+        GPIO.output(Config.MOTOR_RIGHT_BACKWARD, GPIO.HIGH)
         
         self.left_pwm.ChangeDutyCycle(speed)
         self.right_pwm.ChangeDutyCycle(speed)
@@ -95,10 +95,10 @@ class MotorController:
         """Turn robot right"""
         speed = speed or Config.TURN_MOTOR_SPEED
         
-        GPIO.output(Config.MOTOR_LEFT_FORWARD, GPIO.HIGH)
-        GPIO.output(Config.MOTOR_LEFT_BACKWARD, GPIO.LOW)
-        GPIO.output(Config.MOTOR_RIGHT_FORWARD, GPIO.LOW)
-        GPIO.output(Config.MOTOR_RIGHT_BACKWARD, GPIO.HIGH)
+        GPIO.output(Config.MOTOR_LEFT_FORWARD, GPIO.LOW)
+        GPIO.output(Config.MOTOR_LEFT_BACKWARD, GPIO.HIGH)
+        GPIO.output(Config.MOTOR_RIGHT_FORWARD, GPIO.HIGH)
+        GPIO.output(Config.MOTOR_RIGHT_BACKWARD, GPIO.LOW)
         
         self.left_pwm.ChangeDutyCycle(speed)
         self.right_pwm.ChangeDutyCycle(speed)

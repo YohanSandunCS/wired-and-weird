@@ -54,7 +54,7 @@ def main():
         # Sequence 2: Turn right, then forward
         print("[Test] Turning RIGHT...")
         motors.turn_right()
-        time.sleep(0.5)  # Brief turn
+        time.sleep(1.0)  # Gentle turn
         
         print("[Test] Moving FORWARD for 2 seconds...")
         motors.forward()
@@ -68,7 +68,7 @@ def main():
         # Sequence 3: Turn left, then forward
         print("[Test] Turning LEFT...")
         motors.turn_left()
-        time.sleep(0.5)  # Brief turn
+        time.sleep(1.0)  # Gentle turn
         
         print("[Test] Moving FORWARD for 2 seconds...")
         motors.forward()
@@ -85,12 +85,12 @@ def main():
             try:
                 image = camera.capture_frame()
                 if image:
-                    # Get desktop path
-                    desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
+                    # Get script directory
+                    script_dir = os.path.dirname(os.path.abspath(__file__))
                     # Create filename with timestamp
                     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                     filename = f'medirunner_photo_{timestamp}.jpg'
-                    filepath = os.path.join(desktop_path, filename)
+                    filepath = os.path.join(script_dir, filename)
                     
                     # Save image
                     image.save(filepath, 'JPEG')

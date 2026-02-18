@@ -32,13 +32,13 @@ def main():
         image = camera.capture_frame()
         
         if image:
-            # Get desktop path
-            desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
+            # Get script directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
             
             # Create filename with timestamp
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f'medirunner_camera_test_{timestamp}.jpg'
-            filepath = os.path.join(desktop_path, filename)
+            filepath = os.path.join(script_dir, filename)
             
             # Save image
             image.save(filepath, 'JPEG', quality=95)
