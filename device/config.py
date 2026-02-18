@@ -3,10 +3,12 @@ Configuration management for MediRunner Robot
 Loads settings from .env file
 """
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Always load .env from the same directory as this config file,
+# regardless of where the script is invoked from
+load_dotenv(dotenv_path=Path(__file__).parent / '.env')
 
 class Config:
     """Application configuration loaded from environment variables"""
