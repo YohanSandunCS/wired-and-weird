@@ -21,6 +21,7 @@ export default function RobotControlPage() {
   const [showPanoramicModal, setShowPanoramicModal] = useState(false)
   const [isPanoramicCapturing, setIsPanoramicCapturing] = useState(false)
   const [currentMode, setCurrentMode] = useState<'manual' | 'auto'>('manual')
+  const [manualCommandSent, setManualCommandSent] = useState(false)
   const logContainerRef = useRef<HTMLDivElement>(null)
   const isMouseOnScrollbar = useRef(false)
   
@@ -57,6 +58,25 @@ export default function RobotControlPage() {
       connect()
     }
   }, [robotId, isConnected, connect])
+
+  // Send manual mode command once connected
+  useEffect(() => {
+    if (isConnected && robotId && !manualCommandSent) {
+      const command = {
+        type: 'command',
+        robotId,
+        payload: {
+          action: 'manual'
+        },
+        timestamp: Date.now()
+      }
+      
+      send(command)
+      setManualCommandSent(true)
+      
+      console.log('Sent manual mode command:', command)
+    }
+  }, [isConnected, robotId, send, manualCommandSent])
 
   const sendMovementCommand = useCallback((direction: string) => {
     if (!isConnected || !robotId) return
@@ -383,32 +403,56 @@ export default function RobotControlPage() {
                 </div>
               </div>
               
-              {latestVisionFrame && (
+              {currentMode === 'manual' && (
                 <div className="p-6 bg-white border-t border-gray-200">
                   <div className="text-xs text-gray-500 space-y-2">
-                    <div className="flex justify-between">
-                      <span>Keyboard key mapping:</span>
-                      <span className="font-mono">{latestVisionFrame.role}</span>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-semibold text-gray-700">⌨️ Keyboard Controls</span>
+                      {isConnected && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800 font-medium">
+                          Active
+                        </span>
+                      )}
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm pt-2">
                       <div className="flex items-center space-x-2">
-                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↑</kbd>
+                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
+                          pressedKeys.has('ArrowUp') 
+                            ? 'bg-blue-500 text-white border-blue-600' 
+                            : 'bg-gray-100 text-gray-800 border-gray-200'
+                        }`}>↑</kbd>
                         <span className="text-gray-800">Forward</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↓</kbd>
+                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
+                          pressedKeys.has('ArrowDown') 
+                            ? 'bg-blue-500 text-white border-blue-600' 
+                            : 'bg-gray-100 text-gray-800 border-gray-200'
+                        }`}>↓</kbd>
                         <span className="text-gray-800">Backward</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">←</kbd>
+                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
+                          pressedKeys.has('ArrowLeft') 
+                            ? 'bg-blue-500 text-white border-blue-600' 
+                            : 'bg-gray-100 text-gray-800 border-gray-200'
+                        }`}>←</kbd>
                         <span className="text-gray-800">Turn Left</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→</kbd>
+                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
+                          pressedKeys.has('ArrowRight') 
+                            ? 'bg-blue-500 text-white border-blue-600' 
+                            : 'bg-gray-100 text-gray-800 border-gray-200'
+                        }`}>→</kbd>
                         <span className="text-gray-800">Turn Right</span>
                       </div>
                       <div className="flex items-center space-x-2 col-span-2">
-                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Space</kbd>
+                        <kbd className={`px-2 py-1 text-xs font-bold border rounded-lg transition-colors ${
+                          pressedKeys.has('Space') 
+                            ? 'bg-red-500 text-white border-red-600' 
+                            : 'bg-gray-100 text-gray-800 border-gray-200'
+                        }`}>Space</kbd>
                         <span className="text-gray-800">Emergency Stop</span>
                       </div>
                     </div>
