@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useAppStore from '@/store/appStore'
 import { useRobotSocket } from '@/hooks/useRobotSocket'
@@ -17,6 +17,8 @@ export default function RobotControlPage() {
   const [pressedKeys, setPressedKeys] = useState(new Set<string>())
   const [commandHistory, setCommandHistory] = useState<Array<{id: string, command: string, timestamp: number}>>([])
   const [streamStatus, setStreamStatus] = useState<'loading' | 'connected' | 'error'>('loading')
+  const logContainerRef = useRef<HTMLDivElement>(null)
+  const isMouseOnScrollbar = useRef(false)
   
   const {
     isConnected,
@@ -92,6 +94,14 @@ export default function RobotControlPage() {
     setCommandHistory(prev => [...prev, historyEntry].slice(-20))
   }, [isConnected, robotId, send])
 
+  // Auto-scroll for logs
+  useEffect(() => {
+    const logContainer = logContainerRef.current
+    if (logContainer && !isMouseOnScrollbar.current) {
+      logContainer.scrollTop = logContainer.scrollHeight
+    }
+  }, [logs])
+
   // Handle keyboard events
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -148,6 +158,29 @@ export default function RobotControlPage() {
     }
   }, [pressedKeys, sendMovementCommand, sendStopCommand])
 
+  useEffect(() => {
+    const logContainer = logContainerRef.current
+
+    const handleMouseDown = () => {
+      isMouseOnScrollbar.current = true
+    }
+    const handleMouseUp = () => {
+      isMouseOnScrollbar.current = false
+    }
+
+    if (logContainer) {
+      logContainer.addEventListener('mousedown', handleMouseDown)
+      window.addEventListener('mouseup', handleMouseUp)
+    }
+
+    return () => {
+      if (logContainer) {
+        logContainer.removeEventListener('mousedown', handleMouseDown)
+      }
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [])
+
   if (!teamSession.loggedIn || !robotId || !robot) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -157,10 +190,10 @@ export default function RobotControlPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <button
@@ -182,297 +215,192 @@ export default function RobotControlPage() {
                 lastUpdate={robot.lastTelemetryUpdate}
                 size="sm"
               />
+              <div className={`flex items-center space-x-1 text-xs px-2 py-1 rounded-full border ${
+                isConnected 
+                  ? 'bg-green-50 border-green-200 text-green-700' 
+                  : 'bg-red-50 border-red-200 text-red-700'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span className="font-medium">
+                  WebSocket: {isConnected ? 'Connected' : 'Disconnected'}
+                </span>
+              </div>
+              <div className={`flex items-center space-x-1 text-xs px-2 py-1 rounded-full border ${
+                robot.isOnline
+                  ? 'bg-green-50 border-green-200 text-green-700'
+                  : 'bg-red-50 border-red-200 text-red-700'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${robot.isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span className="font-medium">
+                  Robot: {robot.isOnline ? 'Online' : 'Offline'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Control Panel */}
-          <div className="space-y-6">
-            {/* Connection Status */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Connection Status</h2>
-              <div className="space-y-2">
-                <div className={`flex items-center space-x-2 ${
-                  isConnected ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  <div className={`w-3 h-3 rounded-full ${
-                    isConnected ? 'bg-green-500' : 'bg-red-500'
-                  }`}></div>
-                  <span className="font-medium">
-                    WebSocket: {isConnected ? 'Connected' : 'Disconnected'}
-                  </span>
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow flex" style={{ width: '1216px', height: '792px' }}>
+        <div className="flex flex-grow gap-8">
+          {/* Main Content: Live Video Feed */}
+          <div className="w-3/4 flex flex-col space-y-6">
+            <div className="bg-white rounded-lg shadow-sm flex-grow flex flex-col p-0 overflow-hidden">
+              <div className="relative flex-grow">
+                {/* Video Feed */}
+                <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+                  {!isConnected ? (
+                    <div className="text-gray-500 text-center">
+                      <div className="text-gray-400 mb-2 text-2xl">📹</div>
+                      <div className="text-sm">Connect to view live feed</div>
+                    </div>
+                  ) : !latestVisionFrame ? (
+                    <div className="text-gray-500 text-center">
+                      <div className="text-gray-400 mb-2 text-2xl">⏳</div>
+                      <div className="text-sm">Waiting for video stream...</div>
+                    </div>
+                  ) : (
+                    <img
+                      src={`data:${latestVisionFrame.payload.mime};base64,${latestVisionFrame.payload.data}`}
+                      alt="Robot Camera Feed"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error('Failed to load vision frame:', e)
+                      }}
+                    />
+                  )}
                 </div>
-                <div className={`flex items-center space-x-2 ${
-                  robot.isOnline ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  <div className={`w-3 h-3 rounded-full ${
-                    robot.isOnline ? 'bg-green-500' : 'bg-red-500'
-                  }`}></div>
-                  <span className="font-medium">
-                    Robot: {robot.isOnline ? 'Online' : 'Offline'}
-                  </span>
+
+                {/* Overlays */}
+                <div className="absolute inset-0 p-6 flex flex-col justify-between">
+                  {/* Top Overlay */}
+                  <div className="flex items-start justify-between">
+                    <h2 className="text-lg font-medium text-white bg-[#00000061] px-3 py-1 rounded-md">
+                      Live Preview
+                    </h2>
+                    {latestVisionFrame && (
+                      <div className="text-sm text-white bg-[#00000061] px-3 py-1 rounded-md">
+                        {latestVisionFrame.payload.width}×{latestVisionFrame.payload.height} • 
+                        {latestVisionFrame.payload.quality}% quality
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bottom Overlay */}
+                  {latestVisionFrame && (
+                    <div className="flex items-end">
+                      <div className="bg-[#00000061] text-white text-xs px-2 py-1 rounded">
+                        {new Date(latestVisionFrame.timestamp).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-
-            {/* Control Instructions */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Controls</h2>
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600">
-                  Use your keyboard to control the robot:
-                </p>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↑</kbd>
-                    <span>Forward</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↓</kbd>
-                    <span>Backward</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">←</kbd>
-                    <span>Turn Left</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→</kbd>
-                    <span>Turn Right</span>
-                  </div>
-                  <div className="flex items-center space-x-2 col-span-2">
-                    <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Space</kbd>
-                    <span>Emergency Stop</span>
+              
+              {latestVisionFrame && (
+                <div className="p-6 bg-white border-t border-gray-200">
+                  <div className="text-xs text-gray-500 space-y-2">
+                    <div className="flex justify-between">
+                      <span>Keyboard key mapping:</span>
+                      <span className="font-mono">{latestVisionFrame.role}</span>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm pt-2">
+                      <div className="flex items-center space-x-2">
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↑</kbd>
+                        <span className="text-gray-800">Forward</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↓</kbd>
+                        <span className="text-gray-800">Backward</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">←</kbd>
+                        <span className="text-gray-800">Turn Left</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">→</kbd>
+                        <span className="text-gray-800">Turn Right</span>
+                      </div>
+                      <div className="flex items-center space-x-2 col-span-2">
+                        <kbd className="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">Space</kbd>
+                        <span className="text-gray-800">Emergency Stop</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
+          </div>
 
-            {/* Visual Control Pad */}
+          {/* Sidebar */}
+          <div className="w-1/4 flex flex-col space-y-6">
+            {/* Input Visualizer */}
             <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Visual Controls</h2>
+              <h2 className="text-lg font-medium text-gray-900 mb-4">D-Pad</h2>
               <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
                 <div></div>
                 <button
-                  className={`p-4 rounded-lg border-2 transition-colors ${
+                  className={`p-4 rounded-md border-2 transition-colors ${
                     pressedKeys.has('ArrowUp') 
                       ? 'bg-blue-500 text-white border-blue-500' 
-                      : 'bg-gray-50 hover:bg-gray-100 border-gray-300'
+                      : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('forward')}
                   disabled={!isConnected || !robot.isOnline}
                 >
-                  ↑
+                  🡑
                 </button>
                 <div></div>
                 
                 <button
-                  className={`p-4 rounded-lg border-2 transition-colors ${
+                  className={`p-4 rounded-md border-2 transition-colors ${
                     pressedKeys.has('ArrowLeft') 
                       ? 'bg-blue-500 text-white border-blue-500' 
-                      : 'bg-gray-50 hover:bg-gray-100 border-gray-300'
+                      : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('left')}
                   disabled={!isConnected || !robot.isOnline}
                 >
-                  ←
+                  🡐
                 </button>
                 <button
-                  className="p-4 rounded-lg border-2 bg-red-50 hover:bg-red-100 border-red-300 text-red-600"
+                  className="p-4 rounded-md border-2 bg-red-500 text-white text-sm hover:bg-red-600 border-red-500"
                   onClick={sendStopCommand}
                   disabled={!isConnected}
                 >
                   STOP
                 </button>
                 <button
-                  className={`p-4 rounded-lg border-2 transition-colors ${
+                  className={`p-4 rounded-md border-2 transition-colors ${
                     pressedKeys.has('ArrowRight') 
                       ? 'bg-blue-500 text-white border-blue-500' 
-                      : 'bg-gray-50 hover:bg-gray-100 border-gray-300'
+                      : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('right')}
                   disabled={!isConnected || !robot.isOnline}
                 >
-                  →
+                  🡒
                 </button>
                 
                 <div></div>
                 <button
-                  className={`p-4 rounded-lg border-2 transition-colors ${
+                  className={`p-4 rounded-md border-2 transition-colors ${
                     pressedKeys.has('ArrowDown') 
                       ? 'bg-blue-500 text-white border-blue-500' 
-                      : 'bg-gray-50 hover:bg-gray-100 border-gray-300'
+                      : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('backward')}
                   disabled={!isConnected || !robot.isOnline}
                 >
-                  ↓
+                  🡓
                 </button>
                 <div></div>
               </div>
             </div>
-          </div>
 
-          {/* Logs and History */}
-          <div className="space-y-6">
-            {/* Live Preview */}
-             <div className="bg-white rounded-lg p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-medium text-gray-900">Live Preview</h2>
-                {latestVisionFrame && (
-                  <div className="text-sm text-gray-500">
-                    {latestVisionFrame.payload.width}×{latestVisionFrame.payload.height} • 
-                    {latestVisionFrame.payload.quality}% quality
-                  </div>
-                )}
-              </div>
-              
-              <div className="bg-gray-100 rounded-md p-3 h-48 flex items-center justify-center">
-                {!isConnected ? (
-                  <div className="text-gray-500 text-center">
-                    <div className="text-gray-400 mb-2 text-2xl">📹</div>
-                    <div className="text-sm">Connect to view live feed</div>
-                  </div>
-                ) : !latestVisionFrame ? (
-                  <div className="text-gray-500 text-center">
-                    <div className="text-gray-400 mb-2 text-2xl">⏳</div>
-                    <div className="text-sm">Waiting for video stream...</div>
-                  </div>
-                ) : (
-                  <div className="relative w-full h-full">
-                    <img
-                      src={`data:${latestVisionFrame.payload.mime};base64,${latestVisionFrame.payload.data}`}
-                      alt="Robot Camera Feed"
-                      className="w-full h-full object-contain rounded"
-                      onError={(e) => {
-                        console.error('Failed to load vision frame:', e)
-                      }}
-                    />
-                    <div className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
-                      {new Date(latestVisionFrame.timestamp).toLocaleTimeString()}
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {latestVisionFrame && (
-                <div className="mt-3 text-xs text-gray-500 space-y-1">
-                  <div className="flex justify-between">
-                    <span>Role:</span>
-                    <span className="font-mono">{latestVisionFrame.role}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>MIME:</span>
-                    <span className="font-mono">{latestVisionFrame.payload.mime}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Timestamp:</span>
-                    <span className="font-mono">{new Date(latestVisionFrame.timestamp).toLocaleString()}</span>
-                  </div>
-                </div>
-              )}
-            </div> 
-
-
-            {/* Live Preview - MJPEG Stream */}
-            {/*
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-medium text-gray-900">Live Preview</h2>
-                <div className="text-sm text-gray-500">
-                  MJPEG Stream
-                </div>
-              </div>
-              
-              <div className="bg-gray-100 rounded-md p-3 h-64 flex items-center justify-center">
-                <div className="relative w-full h-full">
-                  <img
-                    src="http://127.0.0.1:5001/stream"
-                    alt="Robot Camera Feed"
-                    className="w-full h-full object-contain rounded"
-                    style={{ 
-                      maxWidth: '100%', 
-                      maxHeight: '100%',
-                      display: 'block'
-                    }}
-                    onError={(e) => {
-                      console.error('Failed to load MJPEG stream:', e)
-                      setStreamStatus('error')
-                    }}
-                    onLoad={() => {
-                      console.log('MJPEG stream loaded successfully')
-                      setStreamStatus('connected')
-                    }}
-                  />
-                  <div className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
-                    Live Stream • {new Date().toLocaleTimeString()}
-                  </div>
-                  
-                  {streamStatus === 'error' && (
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-center bg-gray-100 rounded">
-                      <div>
-                        <div className="text-gray-400 mb-2 text-2xl">⚠️</div>
-                        <div className="text-sm">Stream not available</div>
-                        <div className="text-xs mt-1 text-gray-400">Check if server is running on port 5001</div>
-                        <button 
-                          onClick={() => {
-                            setStreamStatus('loading')
-                            // Force reload the image
-                            const img = document.querySelector('img[src="http://127.0.0.1:5001/stream"]') as HTMLImageElement
-                            if (img) {
-                              img.src = `http://127.0.0.1:5001/stream?t=${Date.now()}`
-                            }
-                          }}
-                          className="mt-2 px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-                        >
-                          Retry
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {streamStatus === 'loading' && (
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-500 text-center bg-gray-100 rounded">
-                      <div>
-                        <div className="text-gray-400 mb-2 text-2xl">⏳</div>
-                        <div className="text-sm">Loading stream...</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="mt-3 text-xs text-gray-500 space-y-1">
-                <div className="flex justify-between">
-                  <span>Source:</span>
-                  <span className="font-mono">http://127.0.0.1:5001/stream</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Format:</span>
-                  <span className="font-mono">MJPEG</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Status:</span>
-                  <span className={`font-mono ${
-                    streamStatus === 'connected' ? 'text-green-600' : 
-                    streamStatus === 'error' ? 'text-red-600' : 
-                    'text-yellow-600'
-                  }`}>
-                    {streamStatus === 'connected' ? 'Connected' : 
-                     streamStatus === 'error' ? 'Error' : 
-                     'Loading...'}
-                  </span>
-                </div>
-              </div>
-              
-            </div> */}
-
-            {/* Connection Logs */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Connection Logs</h2>
-              <div className="bg-gray-900 text-gray-100 rounded-md p-3 h-64 overflow-y-auto text-xs font-mono">
+            {/* Filtered Logs / Diagnostics */}
+            <div className="bg-gray-600 rounded-lg p-6 shadow-sm flex-grow relative">
+              <h2 className="text-lg font-medium text-white mb-4">Control Log</h2>
+              <div ref={logContainerRef} className="absolute left-3 right-3 bottom-3 bg-gray-600 text-gray-100 rounded-md p-3 overflow-y-auto text-xs font-mono log-scrollbar" style={{top: '4.75rem'}}>
                 {logs.length === 0 ? (
                   <div className="text-gray-400 italic">No logs yet...</div>
                 ) : (
@@ -482,7 +410,7 @@ export default function RobotControlPage() {
                         <span className="text-gray-400 w-20 flex-shrink-0">
                           {new Date(log.timestamp).toLocaleTimeString()}
                         </span>
-                        <span className={`flex-1 ${
+                        <span className={`flex-1 break-words overflow-hidden ${
                           log.type === 'error' ? 'text-red-400' :
                           log.type === 'success' ? 'text-green-400' :
                           'text-gray-100'
@@ -498,6 +426,13 @@ export default function RobotControlPage() {
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-white shadow-sm border-t border-gray-200 p-4">
+        <div className="max-w-7xl mx-auto text-center text-sm text-gray-500">
+          MediRunner Robot Control Interface
+        </div>
+      </footer>
     </div>
   )
 }
