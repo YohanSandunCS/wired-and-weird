@@ -412,20 +412,35 @@ class MediRunnerRobot:
         print("[Main] Starting telemetry loop")
         
         telemetry_count = 0
+        start_time = time.time()
         
         while self.running:
             try:
                 if self.ws_client and self.ws_client.connected:
                     # Read sensor data if sensors are enabled
                     sensor_data = {}
+                    line_position = None
+                    proximity = False
+                    bump = False
                     if self.sensors:
                         sensor_data = self.sensors.read_all()
+                        line_position = self.sensors.get_line_position()
+                        proximity = sensor_data.get('proximity', False)
+                        bump = sensor_data.get('bump', False)
+                    
+                    # Motor speed
+                    speed = self.motors.current_speed if self.motors else 0
                     
                     # Build telemetry payload
                     telemetry = {
                         'sensors': sensor_data,
                         'mode': self.mode,
                         'auto_mode_active': self.auto_mode_active,
+                        'speed': speed,
+                        'line_position': line_position,
+                        'proximity': proximity,
+                        'bump': bump,
+                        'uptime_seconds': int(time.time() - start_time),
                         'timestamp': datetime.now().isoformat()
                     }
                     
@@ -435,7 +450,7 @@ class MediRunnerRobot:
                     # Only print debug every 10 telemetry messages to avoid spam
                     telemetry_count += 1
                     if Config.DEBUG and telemetry_count % 10 == 0:
-                        print(f"[Main] 📊 Telemetry #{telemetry_count}: mode={self.mode}, auto={self.auto_mode_active}")
+                        print(f"[Main] 📊 Telemetry #{telemetry_count}: mode={self.mode}, speed={speed}, line={line_position}")
                 
                 await asyncio.sleep(Config.TELEMETRY_INTERVAL)
                 
