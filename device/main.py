@@ -151,8 +151,9 @@ class MediRunnerRobot:
         payload = message.get('payload', {})
         
         if msg_type == 'command':
-            # Support both formats: {command: "left"} and {action: "move", direction: "left"}
-            command = payload.get('command') or payload.get('direction')
+            # Support multiple formats:
+            # {command: "left"} or {direction: "left"} or {action: "stop"}
+            command = payload.get('command') or payload.get('direction') or payload.get('action')
             action = payload.get('action')
             
             if Config.DEBUG:
@@ -184,14 +185,18 @@ class MediRunnerRobot:
                     speed = payload.get('speed', Config.TURN_MOTOR_SPEED)
                     self.motors.turn_left(speed)
                     if Config.DEBUG:
-                        print(f"[Main] ✓ Turning left at speed {speed}")
+                        print(f"[Main] ✓ Turning left at speed {speed} (auto-stop in 0.2s)")
+                    # Auto-stop after 0.2 seconds
+                    asyncio.create_task(self._auto_stop_after(0.2))
             
             elif command == 'right':
                 if self.motors:
                     speed = payload.get('speed', Config.TURN_MOTOR_SPEED)
                     self.motors.turn_right(speed)
                     if Config.DEBUG:
-                        print(f"[Main] ✓ Turning right at speed {speed}")
+                        print(f"[Main] ✓ Turning right at speed {speed} (auto-stop in 0.2s)")
+                    # Auto-stop after 0.2 seconds
+                    asyncio.create_task(self._auto_stop_after(0.2))
             
             elif command == 'stop':
                 if self.motors:
@@ -228,6 +233,14 @@ class MediRunnerRobot:
             
             # Send acknowledgment
             await self.send_acknowledgment(message.get('id'))
+    
+    async def _auto_stop_after(self, delay):
+        """Auto-stop motors after specified delay (in seconds)"""
+        await asyncio.sleep(delay)
+        if self.motors and self.mode == 'manual':  # Only auto-stop in manual mode
+            self.motors.stop()
+            if Config.DEBUG:
+                print(f"[Main] ⏹ Auto-stopped after {delay}s")
     
     async def set_mode(self, mode):
         """Switch between manual and auto modes"""
