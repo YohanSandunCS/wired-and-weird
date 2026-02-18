@@ -17,7 +17,8 @@ import RPi.GPIO as GPIO
 from datetime import datetime
 
 from config import Config
-from hardware import MotorController, SensorArray, Camera, Buzzer, LineFollower
+from hardware import MotorController, SensorArray, Camera, Buzzer
+from line_follow import setup_sensors, read_sensors, follow_line
 from network import WebSocketClient
 
 
@@ -39,7 +40,6 @@ class MediRunnerRobot:
         self.camera = None
         self.buzzer = None
         self.ws_client = None
-        self.line_follower = None
         
         # Robot state
         self.running = False
@@ -91,10 +91,10 @@ class MediRunnerRobot:
             else:
                 print("[Main] ✗ Camera disabled")
             
-            # Initialize line follower (requires motors and sensors)
+            # Initialize IR sensors for line following
             if Config.ENABLE_MOTORS and Config.ENABLE_SENSORS:
-                self.line_follower = LineFollower(self.motors, self.sensors)
-                print("[Main] ✓ Line follower initialized")
+                setup_sensors()
+                print("[Main] ✓ Line follower initialized (IR sensors ready)")
             else:
                 print("[Main] ✗ Line follower disabled (requires motors + sensors)")
             
@@ -295,8 +295,6 @@ class MediRunnerRobot:
         if mode == 'auto':
             # Activate autonomous line following
             self.auto_mode_active = True
-            if self.line_follower:
-                self.line_follower.reset()
             print("[Main] Autonomous mode activated")
         else:
             # Deactivate autonomous control
@@ -491,15 +489,18 @@ class MediRunnerRobot:
     
     async def autonomous_control_loop(self):
         """Autonomous line following control loop"""
-        if not self.line_follower:
+        if not (Config.ENABLE_MOTORS and Config.ENABLE_SENSORS):
             print("[Main] Autonomous loop skipped (line follower disabled)")
             while self.running:
                 await asyncio.sleep(1)
             return
-        
+
         print("[Main] Starting autonomous control loop")
         print(f"[Main] Auto mode active: {self.auto_mode_active}")
-        
+
+        line_lost_count = 0
+        LINE_LOST_MAX = 30
+
         while self.running:
             try:
                 if self.auto_mode_active:
@@ -511,7 +512,7 @@ class MediRunnerRobot:
                             self.buzzer.beep(0.1)
                         await asyncio.sleep(0.5)
                         continue
-                    
+
                     # Check for bump collision (only if bump sensor enabled)
                     if Config.ENABLE_BUMP and self.sensors and self.sensors.read_bump():
                         print("[Main] Collision detected! Stopping.")
@@ -521,26 +522,33 @@ class MediRunnerRobot:
                         self.auto_mode_active = False
                         self.mode = 'manual'
                         continue
-                    
-                    # Execute line following
-                    success = self.line_follower.update()
-                    
-                    if not success:
-                        print("\n[Main] ⚠ Line following failed - AUTO MODE DISABLED")
-                        print("[Main] Switching to MANUAL mode\n")
-                        self.auto_mode_active = False
-                        self.mode = 'manual'
-                        if self.buzzer:
-                            self.buzzer.alert_error()
-                        # Wait a bit before potential restart
-                        await asyncio.sleep(1)
-                    
+
+                    # Execute line following using new if-else logic
+                    state = follow_line(self.motors)
+
+                    if Config.DEBUG:
+                        print(f"[Main] Line follow: {state}  sensors={read_sensors()}")
+
+                    if state == "LINE_LOST":
+                        line_lost_count += 1
+                        if line_lost_count >= LINE_LOST_MAX:
+                            print("\n[Main] ⚠ Line lost too long - AUTO MODE DISABLED")
+                            print("[Main] Switching to MANUAL mode\n")
+                            self.auto_mode_active = False
+                            self.mode = 'manual'
+                            line_lost_count = 0
+                            if self.buzzer:
+                                self.buzzer.alert_error()
+                            await asyncio.sleep(1)
+                    else:
+                        line_lost_count = 0
+
                     # Update at configured rate
                     await asyncio.sleep(Config.LINE_FOLLOW_UPDATE_RATE)
                 else:
                     # Not in auto mode, just wait
                     await asyncio.sleep(0.1)
-                    
+
             except Exception as e:
                 if Config.DEBUG:
                     print(f"[Main] Autonomous control error: {e}")
