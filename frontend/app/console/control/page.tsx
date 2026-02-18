@@ -395,6 +395,12 @@ export default function RobotControlPage() {
                 lastUpdate={robot.lastTelemetryUpdate}
                 size="sm"
               />
+              <button
+                onClick={() => router.push('/console')}
+                className="px-3 py-2 rounded-md bg-gray-600 text-white text-sm font-medium hover:bg-gray-700 transition-colors"
+              >
+                ✕ Exit
+              </button>
             </div>
           </div>
         </div>

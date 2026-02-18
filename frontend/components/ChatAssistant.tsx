@@ -13,7 +13,7 @@ export default function ChatAssistant() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hi! I'm your MediRunner assistant. How can I help you today?",
+      content: "Hi! I'm your MediRunner assistant. I can help you with face recognition login, robot control, and all app features. How can I help you today?",
       timestamp: Date.now(),
     },
   ]);
