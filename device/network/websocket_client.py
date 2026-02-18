@@ -109,13 +109,12 @@ class WebSocketClient:
         try:
             async for message in self.websocket:
                 try:
-                    # Debug: print raw message
-                    if Config.DEBUG:
-                        print(f"[WebSocketClient] RAW: {message[:200]}{'...' if len(message) > 200 else ''}")
-                    
                     data = json.loads(message)
-                    if Config.DEBUG:
-                        print(f"[WebSocketClient] Received type: {data.get('type', 'unknown')}")
+                    msg_type = data.get('type', 'unknown')
+                    
+                    # Skip debug output for keep_alive and ping messages to reduce spam
+                    if Config.DEBUG and msg_type not in ('keep_alive', 'ping'):
+                        print(f"[WebSocketClient] ← {msg_type}")
                     
                     # Call message handler if provided
                     if self.message_handler:

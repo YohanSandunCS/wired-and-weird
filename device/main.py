@@ -143,12 +143,27 @@ class MediRunnerRobot:
         Args:
             message: Dict containing command data
         """
-        # Debug: print raw received message
-        if Config.DEBUG:
-            print(f"[Main] RAW MESSAGE: {message}")
-        
         msg_type = message.get('type')
         payload = message.get('payload', {})
+        
+        # Handle ping messages - respond with pong
+        if msg_type == 'ping':
+            if Config.DEBUG:
+                print(f"[Main] 🔔 PING received, sending PONG")
+            pong_msg = {
+                'type': 'pong',
+                'payload': {
+                    'source': 'robot',
+                    'mode': self.mode,
+                    'auto_active': self.auto_mode_active
+                }
+            }
+            await self.ws_client.send_message(pong_msg)
+            return
+        
+        # Handle keep_alive silently
+        if msg_type == 'keep_alive':
+            return
         
         if msg_type == 'command':
             # Support multiple formats:
@@ -165,8 +180,27 @@ class MediRunnerRobot:
                     print(f"[Main] ⚠ No valid command found in payload")
                 return
             
-            # Motor commands
-            if command == 'forward' or command == 'up':
+            # Mode switching commands
+            if command == 'manual':
+                await self.set_mode('manual')
+                if self.buzzer:
+                    self.buzzer.beep(0.05)
+                if Config.DEBUG:
+                    print(f"[Main] ✓ Switched to MANUAL mode")
+            
+            elif command == 'auto':
+                await self.set_mode('auto')
+                if self.buzzer:
+                    self.buzzer.beep_pattern([(0.05, 0.05), (0.05, 0)])  # Double beep for auto mode
+                if Config.DEBUG:
+                    print(f"[Main] ✓ Switched to AUTO mode")
+            
+            # Motor commands (only in manual mode)
+            elif self.mode != 'manual':
+                if Config.DEBUG:
+                    print(f"[Main] ⚠ Motor command '{command}' ignored - not in manual mode (current: {self.mode})")
+            
+            elif command == 'forward' or command == 'up':
                 if self.motors:
                     speed = payload.get('speed', Config.DEFAULT_MOTOR_SPEED)
                     self.motors.forward(speed)
@@ -211,7 +245,7 @@ class MediRunnerRobot:
                     if Config.DEBUG:
                         print(f"[Main] ✓ Speed set to {speed}")
             
-            # Mode switching
+            # Mode switching (legacy format)
             elif command == 'set_mode':
                 mode = payload.get('mode', 'manual')
                 await self.set_mode(mode)
@@ -281,6 +315,8 @@ class MediRunnerRobot:
         """Periodically send telemetry data to gateway"""
         print("[Main] Starting telemetry loop")
         
+        telemetry_count = 0
+        
         while self.running:
             try:
                 if self.ws_client and self.ws_client.connected:
@@ -293,11 +329,17 @@ class MediRunnerRobot:
                     telemetry = {
                         'sensors': sensor_data,
                         'mode': self.mode,
+                        'auto_mode_active': self.auto_mode_active,
                         'timestamp': datetime.now().isoformat()
                     }
                     
                     # Send telemetry
                     await self.ws_client.send_telemetry(telemetry)
+                    
+                    # Only print debug every 10 telemetry messages to avoid spam
+                    telemetry_count += 1
+                    if Config.DEBUG and telemetry_count % 10 == 0:
+                        print(f"[Main] 📊 Telemetry #{telemetry_count}: mode={self.mode}, auto={self.auto_mode_active}")
                 
                 await asyncio.sleep(Config.TELEMETRY_INTERVAL)
                 
