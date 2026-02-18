@@ -295,8 +295,11 @@ export default function RobotControlPage() {
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         <div className="flex gap-8 items-start">
           {/* Main Content: Live Video Feed */}
-          <div className="w-1/2 flex flex-col space-y-6">
-            <div className="glass-card flex flex-col p-0 overflow-hidden" style={{ minHeight: "520px" }}>
+          <div className="w-3/5 flex flex-col space-y-6">
+            <div
+              className="glass-card flex flex-col p-0 overflow-hidden"
+              style={{ minHeight: "520px" }}
+            >
               <div className="relative flex-grow">
                 {/* Video Feed */}
                 <div className="absolute inset-0 bg-[#0B0F2A] flex items-center justify-center">
@@ -352,61 +355,12 @@ export default function RobotControlPage() {
                   )}
                 </div>
               </div>
-
-              {latestVisionFrame && (
-                <div
-                  className="p-6 border-t border-cyan-500/10"
-                  style={{ background: "rgba(15, 23, 60, 0.65)" }}
-                >
-                  <div className="text-xs text-gray-400 space-y-2">
-                    <div className="flex justify-between">
-                      <span>Keyboard key mapping:</span>
-                      <span className="font-mono text-cyan-400">
-                        {latestVisionFrame.role}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm pt-2">
-                      <div className="flex items-center space-x-2">
-                        <kbd className="px-2 py-1 text-xs font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
-                          ↑
-                        </kbd>
-                        <span className="text-gray-300">Forward</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <kbd className="px-2 py-1 text-xs font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
-                          ↓
-                        </kbd>
-                        <span className="text-gray-300">Backward</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <kbd className="px-2 py-1 text-xs font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
-                          ←
-                        </kbd>
-                        <span className="text-gray-300">Turn Left</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <kbd className="px-2 py-1 text-xs font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
-                          →
-                        </kbd>
-                        <span className="text-gray-300">Turn Right</span>
-                      </div>
-                      <div className="flex items-center space-x-2 col-span-2">
-                        <kbd className="px-2 py-1 text-xs font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
-                          Space
-                        </kbd>
-                        <span className="text-gray-300">Emergency Stop</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="w-1/2 flex flex-col space-y-6">
-            {/* Input Visualizer */}
-            <div className="glass-card p-4 flex flex-col items-center">
+          {/* D-Pad */}
+          <div className="w-2/5">
+            <div className="glass-card p-6 flex flex-col items-center">
               {/* Fixed-size square D-Pad */}
               <div
                 className="relative"
@@ -559,10 +513,15 @@ export default function RobotControlPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
 
-            {/* Filtered Logs / Diagnostics */}
+        {/* Row 2: Control Log | Keyboard Mapping */}
+        <div className="flex gap-8 items-start mt-8">
+          {/* Control Log */}
+          <div className="w-3/5">
             <div className="glass-card p-6">
-              <h2 className="text-lg font-medium text-white mb-4 glow-heading">
+              <h2 className="text-base font-semibold text-white mb-4 glow-heading">
                 Control Log
               </h2>
               <div
@@ -594,6 +553,47 @@ export default function RobotControlPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Keyboard Mapping */}
+          <div className="w-2/5">
+            <div className="glass-card p-6">
+              <h2 className="text-base font-semibold text-white mb-4 glow-heading">
+                Keyboard Mapping
+              </h2>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-5 text-base">
+                <div className="flex items-center space-x-3">
+                  <kbd className="px-4 py-2 text-base font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg min-w-[2.5rem] text-center">
+                    ↑
+                  </kbd>
+                  <span className="text-gray-300">Forward</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <kbd className="px-4 py-2 text-base font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg min-w-[2.5rem] text-center">
+                    ↓
+                  </kbd>
+                  <span className="text-gray-300">Backward</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <kbd className="px-4 py-2 text-base font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg min-w-[2.5rem] text-center">
+                    ←
+                  </kbd>
+                  <span className="text-gray-300">Turn Left</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <kbd className="px-4 py-2 text-base font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg min-w-[2.5rem] text-center">
+                    →
+                  </kbd>
+                  <span className="text-gray-300">Turn Right</span>
+                </div>
+                <div className="flex items-center space-x-3 col-span-2">
+                  <kbd className="px-4 py-2 text-base font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+                    Space
+                  </kbd>
+                  <span className="text-gray-300">Emergency Stop</span>
+                </div>
               </div>
             </div>
           </div>
