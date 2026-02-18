@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import useAppStore from '@/store/appStore'
+import { speakSuccess } from '@/hooks/useVoiceAssistant'
 
 // Type for Web Speech API
 interface SpeechRecognitionEvent extends Event {
@@ -163,6 +164,9 @@ export default function FaceLoginPage() {
       if (data.success) {
         setMessage(`Welcome ${data.user}! Redirecting...`)
         setMessageType('success')
+        
+        // Speak success message
+        speakSuccess(`Access granted. Welcome ${data.user}.`)
         
         // Update authentication state AND team session
         setAuthenticated(true)

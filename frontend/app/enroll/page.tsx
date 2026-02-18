@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { speakSuccess } from '@/hooks/useVoiceAssistant'
 
 export default function EnrollPage() {
   const [userId, setUserId] = useState('')
@@ -62,6 +63,12 @@ export default function EnrollPage() {
       
       setMessage('Camera ready. Fill in details and click "Enroll Face" to register.')
       setMessageType('info')
+      
+      // Voice guidance
+      speakSuccess('Opening camera')
+      setTimeout(() => {
+        speakSuccess('Please focus on middle area of the screen')
+      }, 1500)
     } catch (error) {
       console.error('Camera error:', error)
       setMessage('Failed to access camera. Please grant camera permissions.')
@@ -133,6 +140,9 @@ export default function EnrollPage() {
       if (data.success) {
         setMessage(data.message || 'Enrollment successful! You can now login.')
         setMessageType('success')
+        
+        // Voice confirmation
+        speakSuccess('Enrollment successful. You can now login.')
         
         // Clear form
         setUserId('')
