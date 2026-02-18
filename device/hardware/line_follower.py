@@ -46,8 +46,7 @@ class LineFollower:
             print(f"[LineFollower] Base speed: {self.base_speed}")
     
     def get_line_error(self):
-        """
-        Calculate line position error from sensor readings
+        """Calculate line position error from sensor readings
         
         Returns weighted position error:
         - Negative = line is left of center (turn left)
@@ -58,6 +57,10 @@ class LineFollower:
         left2: -2, left1: -1, center: 0, right1: +1, right2: +2
         """
         sensors = self.sensors.read_line_sensors()
+        
+        # Invert sensor values if configured (some sensors return 1 for black line)
+        if Config.INVERT_LINE_SENSORS:
+            sensors = {k: 1 - v for k, v in sensors.items()}
         
         # Define sensor positions (weighted)
         positions = {
@@ -82,16 +85,20 @@ class LineFollower:
                 total_weight += 1
                 weighted_sum += weight
         
+        # DEBUG: Always print sensor values to diagnose issue
+        print(f"[LineFollower] RAW SENSORS: L2={sensors['left2']} L1={sensors['left1']} C={sensors['center']} R1={sensors['right1']} R2={sensors['right2']} | On line: {sensors_on_line} | Inverted: {Config.INVERT_LINE_SENSORS}")
+        
         # Calculate error
         if sensors_on_line == 0:
             # Line lost - return None to trigger search behavior
+            print("[LineFollower] ERROR: No sensors detect line (all sensors = 1)")
             return None
         
         # Average position error
         error = weighted_sum / total_weight if total_weight > 0 else 0
         
         if Config.DEBUG:
-            print(f"[LineFollower] Sensors: {sensors}, Error: {error:.2f}")
+            print(f"[LineFollower] Error: {error:.2f}")
         
         return error
     

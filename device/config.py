@@ -63,6 +63,7 @@ class Config:
     LINE_FOLLOW_KD = float(os.getenv('LINE_FOLLOW_KD', '15.0'))
     LINE_LOST_MAX_COUNT = int(os.getenv('LINE_LOST_MAX_COUNT', '20'))
     LINE_FOLLOW_UPDATE_RATE = float(os.getenv('LINE_FOLLOW_UPDATE_RATE', '0.05'))  # 20Hz
+    INVERT_LINE_SENSORS = os.getenv('INVERT_LINE_SENSORS', 'True').lower() in ('true', '1', 'yes')  # True if sensors return 1 for black
     
     # Debug Mode
     DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
