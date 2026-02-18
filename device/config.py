@@ -69,6 +69,7 @@ class Config:
     LINE_FOLLOW_UPDATE_RATE = float(os.getenv('LINE_FOLLOW_UPDATE_RATE', '0.05'))  # 20Hz
     INVERT_LINE_SENSORS = os.getenv('INVERT_LINE_SENSORS', 'False').lower() in ('true', '1', 'yes')  # True if sensors return 1 for black
     INVERT_MOTOR_CORRECTION = os.getenv('INVERT_MOTOR_CORRECTION', 'False').lower() in ('true', '1', 'yes')  # True if turning wrong way
+    LINE_FOLLOW_USE_PID = os.getenv('LINE_FOLLOW_USE_PID', 'False').lower() in ('true', '1', 'yes')  # False = simple if-else, True = PID controller
     
     # Debug Mode
     DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
