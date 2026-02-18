@@ -8,6 +8,9 @@ interface TeamRobotData {
 }
 
 interface AppState {
+  // Authentication
+  isAuthenticated: boolean
+  
   // Team session
   teamSession: TeamSession
   
@@ -22,6 +25,7 @@ interface AppState {
   _syncCurrentTeamData: () => void
   
   // Actions
+  setAuthenticated: (value: boolean) => void
   login: (teamCode: string) => void
   logout: () => void
   clearAllRobots: () => void
@@ -35,6 +39,8 @@ const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       // Initial state
+      isAuthenticated: false,
+      
       teamSession: {
         teamCode: '',
         loggedIn: false,
@@ -57,6 +63,10 @@ const useAppStore = create<AppState>()(
       },
 
       // Actions
+      setAuthenticated: (value: boolean) => {
+        set({ isAuthenticated: value })
+      },
+      
       login: (teamCode: string) => {
         set({
           teamSession: {
@@ -207,6 +217,7 @@ const useAppStore = create<AppState>()(
         const store = get()
         store._syncCurrentTeamData()
       },
+        
     }),
     {
       name: 'medi-runner-store',

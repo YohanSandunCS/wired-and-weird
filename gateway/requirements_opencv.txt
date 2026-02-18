@@ -1,0 +1,16 @@
+# MediRunner Backend Dependencies - OpenCV Face Recognition
+# Works on Python 3.14+ (no dlib/compilation required)
+
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+websockets>=12.0
+
+# OpenCV with face recognition module (no dlib needed)
+opencv-contrib-python>=4.8.0
+numpy>=1.24.0
+pillow>=10.0.0
+
+# Note: opencv-contrib-python includes face recognition algorithms
+# No C++ compilation required - pure Python wheels available

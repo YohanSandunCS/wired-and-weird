@@ -11,7 +11,7 @@ export default function RobotControlPage() {
   const searchParams = useSearchParams()
   const robotId = searchParams.get('robotId')
   
-  const { teamSession, robots } = useAppStore()
+  const { teamSession, robots, isAuthenticated } = useAppStore()
   const robot = robots.find(r => r.robotId === robotId)
   
   const [pressedKeys, setPressedKeys] = useState(new Set<string>())
@@ -29,8 +29,12 @@ export default function RobotControlPage() {
     send,
   } = useRobotSocket(robotId)
 
-  // Redirect if not logged in or no robot
+  // Redirect if not authenticated or not logged in or no robot
   useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/face-login')
+      return
+    }
     if (!teamSession.loggedIn) {
       router.push('/')
       return
@@ -39,7 +43,7 @@ export default function RobotControlPage() {
       router.push('/console')
       return
     }
-  }, [teamSession.loggedIn, robotId, robot, router])
+  }, [isAuthenticated, teamSession.loggedIn, robotId, robot, router])
 
   // Auto-connect when component mounts
   useEffect(() => {

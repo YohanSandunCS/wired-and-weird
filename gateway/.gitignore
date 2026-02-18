@@ -2,3 +2,7 @@
 __pycache__/
 **/__pycache__/
 *.pyc
+
+# Enrolled user data (contains face images - sensitive)
+enrolled_users/
+admin.jpg
