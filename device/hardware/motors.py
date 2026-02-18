@@ -119,6 +119,50 @@ class MotorController:
         if Config.DEBUG:
             print("[MotorController] Stopped")
     
+    def turn_left_differential(self, left_speed, right_speed):
+        """
+        Turn left using differential steering
+        Left motor slower/backward, right motor faster/forward
+        
+        Args:
+            left_speed: Speed for left motor (0-100)
+            right_speed: Speed for right motor (0-100)
+        """
+        # Left motor - backward or slower
+        GPIO.output(Config.MOTOR_LEFT_FORWARD, GPIO.HIGH)
+        GPIO.output(Config.MOTOR_LEFT_BACKWARD, GPIO.LOW)
+        self.left_pwm.ChangeDutyCycle(left_speed)
+        
+        # Right motor - forward or faster
+        GPIO.output(Config.MOTOR_RIGHT_FORWARD, GPIO.LOW)
+        GPIO.output(Config.MOTOR_RIGHT_BACKWARD, GPIO.HIGH)
+        self.right_pwm.ChangeDutyCycle(right_speed)
+        
+        if Config.DEBUG:
+            print(f"[MotorController] Differential left: L={left_speed}, R={right_speed}")
+    
+    def turn_right_differential(self, left_speed, right_speed):
+        """
+        Turn right using differential steering
+        Left motor faster/forward, right motor slower/backward
+        
+        Args:
+            left_speed: Speed for left motor (0-100)
+            right_speed: Speed for right motor (0-100)
+        """
+        # Left motor - forward or faster
+        GPIO.output(Config.MOTOR_LEFT_FORWARD, GPIO.LOW)
+        GPIO.output(Config.MOTOR_LEFT_BACKWARD, GPIO.HIGH)
+        self.left_pwm.ChangeDutyCycle(left_speed)
+        
+        # Right motor - backward or slower
+        GPIO.output(Config.MOTOR_RIGHT_FORWARD, GPIO.HIGH)
+        GPIO.output(Config.MOTOR_RIGHT_BACKWARD, GPIO.LOW)
+        self.right_pwm.ChangeDutyCycle(right_speed)
+        
+        if Config.DEBUG:
+            print(f"[MotorController] Differential right: L={left_speed}, R={right_speed}")
+    
     def set_speed(self, speed):
         """Set default motor speed (0-100)"""
         self.current_speed = max(0, min(100, speed))

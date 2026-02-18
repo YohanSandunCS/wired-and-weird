@@ -56,6 +56,14 @@ class Config:
     DEFAULT_MOTOR_SPEED = int(os.getenv('DEFAULT_MOTOR_SPEED', '70'))
     TURN_MOTOR_SPEED = int(os.getenv('TURN_MOTOR_SPEED', '60'))
     
+    # Line Following Configuration
+    LINE_FOLLOW_SPEED = int(os.getenv('LINE_FOLLOW_SPEED', '60'))
+    LINE_FOLLOW_KP = float(os.getenv('LINE_FOLLOW_KP', '25.0'))
+    LINE_FOLLOW_KI = float(os.getenv('LINE_FOLLOW_KI', '0.1'))
+    LINE_FOLLOW_KD = float(os.getenv('LINE_FOLLOW_KD', '15.0'))
+    LINE_LOST_MAX_COUNT = int(os.getenv('LINE_LOST_MAX_COUNT', '20'))
+    LINE_FOLLOW_UPDATE_RATE = float(os.getenv('LINE_FOLLOW_UPDATE_RATE', '0.05'))  # 20Hz
+    
     # Debug Mode
     DEBUG = os.getenv('DEBUG', 'True').lower() in ('true', '1', 'yes')
     

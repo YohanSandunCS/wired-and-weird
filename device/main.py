@@ -16,7 +16,7 @@ import RPi.GPIO as GPIO
 from datetime import datetime
 
 from config import Config
-from hardware import MotorController, SensorArray, Camera, Buzzer
+from hardware import MotorController, SensorArray, Camera, Buzzer, LineFollower
 from network import WebSocketClient
 
 
@@ -38,10 +38,12 @@ class MediRunnerRobot:
         self.camera = None
         self.buzzer = None
         self.ws_client = None
+        self.line_follower = None
         
         # Robot state
         self.running = False
         self.mode = 'manual'  # 'manual' or 'auto'
+        self.auto_mode_active = False
         
         # Setup signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -86,6 +88,13 @@ class MediRunnerRobot:
                 print("[Main] ✓ Camera initialized")
             else:
                 print("[Main] ✗ Camera disabled")
+            
+            # Initialize line follower (requires motors and sensors)
+            if Config.ENABLE_MOTORS and Config.ENABLE_SENSORS:
+                self.line_follower = LineFollower(self.motors, self.sensors)
+                print("[Main] ✓ Line follower initialized")
+            else:
+                print("[Main] ✗ Line follower disabled (requires motors + sensors)")
             
             print("[Main] Hardware initialization complete")
             return True
@@ -171,8 +180,7 @@ class MediRunnerRobot:
             # Mode switching
             elif command == 'set_mode':
                 mode = payload.get('mode', 'manual')
-                self.mode = mode
-                print(f"[Main] Mode switched to: {mode}")
+                await self.set_mode(mode)
                 if self.buzzer:
                     self.buzzer.beep(0.05)
             
@@ -183,6 +191,29 @@ class MediRunnerRobot:
             
             # Send acknowledgment
             await self.send_acknowledgment(message.get('id'))
+    
+    async def set_mode(self, mode):
+        """Switch between manual and auto modes"""
+        if mode == self.mode:
+            return  # Already in this mode
+        
+        old_mode = self.mode
+        self.mode = mode
+        
+        print(f"[Main] Mode switched: {old_mode} -> {mode}")
+        
+        if mode == 'auto':
+            # Activate autonomous line following
+            self.auto_mode_active = True
+            if self.line_follower:
+                self.line_follower.reset()
+            print("[Main] Autonomous mode activated")
+        else:
+            # Deactivate autonomous control
+            self.auto_mode_active = False
+            if self.motors:
+                self.motors.stop()
+            print("[Main] Manual mode activated")
     
     async def send_acknowledgment(self, command_id):
         """Send command acknowledgment"""
@@ -254,6 +285,62 @@ class MediRunnerRobot:
                     print(f"[Main] Camera error: {e}")
                 await asyncio.sleep(1)
     
+    async def autonomous_control_loop(self):
+        """Autonomous line following control loop"""
+        if not self.line_follower:
+            print("[Main] Autonomous loop skipped (line follower disabled)")
+            while self.running:
+                await asyncio.sleep(1)
+            return
+        
+        print("[Main] Starting autonomous control loop")
+        
+        while self.running:
+            try:
+                if self.auto_mode_active:
+                    # Check for obstacles first
+                    if self.sensors and self.sensors.read_proximity():
+                        print("[Main] Obstacle detected! Stopping.")
+                        self.motors.stop()
+                        if self.buzzer:
+                            self.buzzer.beep(0.1)
+                        await asyncio.sleep(0.5)
+                        continue
+                    
+                    # Check for bump collision
+                    if self.sensors and self.sensors.read_bump():
+                        print("[Main] Collision detected! Stopping.")
+                        self.motors.stop()
+                        if self.buzzer:
+                            self.buzzer.alert_error()
+                        self.auto_mode_active = False
+                        self.mode = 'manual'
+                        continue
+                    
+                    # Execute line following
+                    success = self.line_follower.update()
+                    
+                    if not success:
+                        print("[Main] Line following failed - switching to manual mode")
+                        self.auto_mode_active = False
+                        self.mode = 'manual'
+                        if self.buzzer:
+                            self.buzzer.alert_error()
+                    
+                    # Update at configured rate
+                    await asyncio.sleep(Config.LINE_FOLLOW_UPDATE_RATE)
+                else:
+                    # Not in auto mode, just wait
+                    await asyncio.sleep(0.1)
+                    
+            except Exception as e:
+                if Config.DEBUG:
+                    print(f"[Main] Autonomous control error: {e}")
+                self.auto_mode_active = False
+                if self.motors:
+                    self.motors.stop()
+                await asyncio.sleep(1)
+    
     async def run(self):
         """Main robot execution loop"""
         print("\n[Main] Starting MediRunner Robot...")
@@ -278,11 +365,12 @@ class MediRunnerRobot:
         print(f"Mode: {self.mode}")
         print("=" * 60 + "\n")
         
-        # Start telemetry and camera loops
+        # Start telemetry, camera, and autonomous control loops
         try:
             await asyncio.gather(
                 self.telemetry_loop(),
-                self.camera_loop()
+                self.camera_loop(),
+                self.autonomous_control_loop()
             )
         except asyncio.CancelledError:
             print("[Main] Tasks cancelled")
