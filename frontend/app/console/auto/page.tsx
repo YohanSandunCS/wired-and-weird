@@ -339,7 +339,7 @@ export default function RobotAutonomousPage() {
                   className="w-full p-3 rounded-md border-2 bg-purple-500 text-white font-medium hover:bg-purple-600 border-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isPanoramicCapturing ? '📸 Capturing...' : '📸 360° Panoramic'}
-                </button>{currentMode === 'auto' ? 'Autonomous' : 'Control'}
+                </button>
               </div>
             </div>
 
@@ -379,6 +379,20 @@ export default function RobotAutonomousPage() {
           MediRunner Robot Interface - {currentMode === 'auto' ? 'Autonomous Mode' : 'Manual Mode'}
         </div>
       </footer>
+
+      {/* Panoramic Image Viewer */}
+      {showPanoramicModal && latestPanoramicImage && (
+        <PanoramicViewer
+          imageUrl={`data:${latestPanoramicImage.payload.mime};base64,${latestPanoramicImage.payload.data}`}
+          onClose={() => {
+            setShowPanoramicModal(false)
+            clearPanoramicImage()
+          }}
+          captureTime={latestPanoramicImage.payload.captureTime}
+          width={latestPanoramicImage.payload.width}
+          height={latestPanoramicImage.payload.height}
+        />
+      )}
     </div>
   )
 }
