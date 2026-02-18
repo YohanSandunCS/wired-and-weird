@@ -57,10 +57,10 @@ class Config:
     TURN_MOTOR_SPEED = int(os.getenv('TURN_MOTOR_SPEED', '60'))
     
     # Line Following Configuration
-    LINE_FOLLOW_SPEED = int(os.getenv('LINE_FOLLOW_SPEED', '60'))
-    LINE_FOLLOW_KP = float(os.getenv('LINE_FOLLOW_KP', '25.0'))
-    LINE_FOLLOW_KI = float(os.getenv('LINE_FOLLOW_KI', '0.1'))
-    LINE_FOLLOW_KD = float(os.getenv('LINE_FOLLOW_KD', '15.0'))
+    LINE_FOLLOW_SPEED = int(os.getenv('LINE_FOLLOW_SPEED', '50'))
+    LINE_FOLLOW_KP = float(os.getenv('LINE_FOLLOW_KP', '15.0'))  # Reduced for smoother control
+    LINE_FOLLOW_KI = float(os.getenv('LINE_FOLLOW_KI', '0.0'))   # Disabled initially
+    LINE_FOLLOW_KD = float(os.getenv('LINE_FOLLOW_KD', '5.0'))   # Reduced for less jitter
     LINE_LOST_MAX_COUNT = int(os.getenv('LINE_LOST_MAX_COUNT', '20'))
     LINE_FOLLOW_UPDATE_RATE = float(os.getenv('LINE_FOLLOW_UPDATE_RATE', '0.05'))  # 20Hz
     INVERT_LINE_SENSORS = os.getenv('INVERT_LINE_SENSORS', 'False').lower() in ('true', '1', 'yes')  # True if sensors return 1 for black

@@ -149,28 +149,24 @@ class LineFollower:
         
         Args:
             correction: Speed adjustment value
+            Positive correction = line is right, need to turn right (slow right motor)
+            Negative correction = line is left, need to turn left (slow left motor)
         """
         # Calculate individual motor speeds
-        left_speed = self.base_speed - correction
-        right_speed = self.base_speed + correction
+        # When line is right (+correction), slow down right motor
+        # When line is left (-correction), slow down left motor
+        left_speed = self.base_speed + correction  # Increase if turning right
+        right_speed = self.base_speed - correction  # Increase if turning left
         
         # Clamp speeds to valid range (0-100)
         left_speed = max(0, min(100, left_speed))
         right_speed = max(0, min(100, right_speed))
         
-        # Apply speeds with differential steering
-        if left_speed > right_speed:
-            # Turning left
-            self.motors.turn_left_differential(left_speed, right_speed)
-        elif right_speed > left_speed:
-            # Turning right
-            self.motors.turn_right_differential(left_speed, right_speed)
-        else:
-            # Moving straight
-            self.motors.forward(self.base_speed)
+        # Always print motor speeds for debugging
+        print(f"[LineFollower] → Motor speeds: L={left_speed:.1f}, R={right_speed:.1f} (correction={correction:.1f})")
         
-        if Config.DEBUG:
-            print(f"[LineFollower] Motor speeds: L={left_speed:.1f}, R={right_speed:.1f}")
+        # Apply smooth differential steering (both motors forward)
+        self.motors.set_motor_speeds(left_speed, right_speed)
     
     def handle_line_lost(self):
         """
