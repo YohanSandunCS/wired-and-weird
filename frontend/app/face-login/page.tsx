@@ -45,6 +45,8 @@ export default function FaceLoginPage() {
   const [messageType, setMessageType] = useState<'error' | 'success' | 'info'>('info')
   const [voiceTranscript, setVoiceTranscript] = useState('')
   const [countdown, setCountdown] = useState<number>(0)
+  const [manualPassword, setManualPassword] = useState('')
+  const [isManualLogin, setIsManualLogin] = useState(false)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -198,6 +200,29 @@ export default function FaceLoginPage() {
     const base64 = dataUrl.split(',')[1]
     
     return base64
+  }
+
+  const handleManualLogin = () => {
+    if (manualPassword === '0000') {
+      setMessage('Manual login successful! Redirecting...')
+      setMessageType('success')
+      
+      // Speak success message
+      speakSuccess('Access granted. Welcome Admin.')
+      
+      // Authenticate and login
+      setAuthenticated(true)
+      login('ADMIN')
+      
+      // Redirect to console
+      setTimeout(() => {
+        router.push('/console')
+      }, 1500)
+    } else {
+      setMessage('Incorrect password. Please try again.')
+      setMessageType('error')
+      setManualPassword('')
+    }
   }
 
   const handleFaceScan = async () => {
@@ -490,6 +515,42 @@ export default function FaceLoginPage() {
           >
             → Register your face
           </button>
+        </div>
+
+        {/* Manual Login Fallback */}
+        <div className="mt-6 border-t pt-4">
+          <button
+            onClick={() => setIsManualLogin(!isManualLogin)}
+            className="w-full text-sm text-gray-500 hover:text-gray-700 font-medium mb-3 flex items-center justify-center"
+          >
+            {isManualLogin ? '▲' : '▼'} Face recognition not working? Use manual login
+          </button>
+          
+          {isManualLogin && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-xs text-yellow-800 mb-3">
+                <strong>Emergency Access:</strong> If face recognition fails, enter the manual password below.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  value={manualPassword}
+                  onChange={(e) => setManualPassword(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleManualLogin()}
+                  placeholder="Enter password"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  maxLength={4}
+                />
+                <button
+                  onClick={handleManualLogin}
+                  disabled={manualPassword.length === 0}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  Login
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Back to Home Link - Commented out since traditional login is disabled
