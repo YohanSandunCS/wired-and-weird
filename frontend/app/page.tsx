@@ -144,8 +144,8 @@ export default function LoginPage() {
               <div className="text-xs text-gray-600 space-y-1">
                 <p className="font-medium text-purple-700">Try saying:</p>
                 <ul className="list-disc list-inside ml-2 space-y-0.5">
-                  <li>&quot;Enroll me&quot; or &quot;Start enrollment&quot;</li>
-                  <li>&quot;Login&quot; or &quot;Authenticate me&quot;</li>
+                  <li>&quot;Enroll me&quot;</li>
+                  <li>&quot;Login&quot;</li>
                 </ul>
               </div>
             )}
