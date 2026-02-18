@@ -20,6 +20,7 @@ export default function RobotControlPage() {
   const [streamStatus, setStreamStatus] = useState<'loading' | 'connected' | 'error'>('loading')
   const [showPanoramicModal, setShowPanoramicModal] = useState(false)
   const [isPanoramicCapturing, setIsPanoramicCapturing] = useState(false)
+  const [currentMode, setCurrentMode] = useState<'manual' | 'auto'>('manual')
   const logContainerRef = useRef<HTMLDivElement>(null)
   const isMouseOnScrollbar = useRef(false)
   
@@ -127,6 +128,31 @@ export default function RobotControlPage() {
     setCommandHistory(prev => [...prev, historyEntry].slice(-20))
   }, [isConnected, robotId, send])
 
+  const toggleMode = useCallback(() => {
+    if (!isConnected || !robotId) return
+    
+    const newMode = currentMode === 'manual' ? 'auto' : 'manual'
+    
+    const command = {
+      type: 'command',
+      robotId,
+      payload: {
+        action: newMode === 'auto' ? 'auto' : 'manual'
+      },
+      timestamp: Date.now()
+    }
+    
+    send(command)
+    setCurrentMode(newMode)
+    
+    const historyEntry = {
+      id: Date.now().toString(),
+      command: `Switch to ${newMode === 'auto' ? 'Autonomous' : 'Manual'} Mode`,
+      timestamp: Date.now()
+    }
+    setCommandHistory(prev => [...prev, historyEntry].slice(-20))
+  }, [isConnected, robotId, send, currentMode])
+
   // Handle panoramic image response
   useEffect(() => {
     if (latestPanoramicImage) {
@@ -146,6 +172,9 @@ export default function RobotControlPage() {
   // Handle keyboard events
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't handle keyboard in auto mode
+      if (currentMode === 'auto') return
+      
       // Prevent default behavior for arrow keys
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(event.code)) {
         event.preventDefault()
@@ -177,6 +206,9 @@ export default function RobotControlPage() {
     }
 
     const handleKeyUp = (event: KeyboardEvent) => {
+      // Don't handle keyboard in auto mode
+      if (currentMode === 'auto') return
+      
       const newPressedKeys = new Set(pressedKeys)
       newPressedKeys.delete(event.code)
       setPressedKeys(newPressedKeys)
@@ -197,7 +229,7 @@ export default function RobotControlPage() {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [pressedKeys, sendMovementCommand, sendStopCommand])
+  }, [pressedKeys, sendMovementCommand, sendStopCommand, currentMode])
 
   useEffect(() => {
     const logContainer = logContainerRef.current
@@ -237,15 +269,23 @@ export default function RobotControlPage() {
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push('/console')}
-                className="text-gray-600 hover:text-gray-900"
-              >
-                ← Back to Console
-              </button>
               <h1 className="text-xl font-semibold text-gray-900">
                 Robot Control Panel
               </h1>
+              <div className="flex items-center space-x-2 ml-4">
+                <span className="text-sm text-gray-600">Mode:</span>
+                <button
+                  onClick={toggleMode}
+                  disabled={!isConnected || !robot.isOnline}
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    currentMode === 'manual'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-purple-600 text-white'
+                  }`}
+                >
+                  {currentMode === 'manual' ? '🎮 Manual' : '🤖 Auto'}
+                </button>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">
@@ -276,6 +316,12 @@ export default function RobotControlPage() {
                   Robot: {robot.isOnline ? 'Online' : 'Offline'}
                 </span>
               </div>
+              <button
+                onClick={() => router.push('/console')}
+                className="px-3 py-2 rounded-md bg-gray-600 text-white text-sm font-medium hover:bg-gray-700 transition-colors"
+              >
+                ✕ Exit
+              </button>
             </div>
           </div>
         </div>
@@ -376,7 +422,14 @@ export default function RobotControlPage() {
           <div className="w-1/4 flex flex-col space-y-6">
             {/* Input Visualizer */}
             <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">D-Pad</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-medium text-gray-900">D-Pad</h2>
+                {currentMode === 'auto' && (
+                  <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 font-medium">
+                    Controls Disabled (Auto Mode)
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto">
                 <div></div>
                 <button
@@ -386,7 +439,7 @@ export default function RobotControlPage() {
                       : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('forward')}
-                  disabled={!isConnected || !robot.isOnline}
+                  disabled={!isConnected || !robot.isOnline || currentMode === 'auto'}
                 >
                   🡑
                 </button>
@@ -399,14 +452,14 @@ export default function RobotControlPage() {
                       : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('left')}
-                  disabled={!isConnected || !robot.isOnline}
+                  disabled={!isConnected || !robot.isOnline || currentMode === 'auto'}
                 >
                   🡐
                 </button>
                 <button
                   className="p-4 rounded-md border-2 bg-red-500 text-white text-sm hover:bg-red-600 border-red-500"
                   onClick={sendStopCommand}
-                  disabled={!isConnected}
+                  disabled={!isConnected || currentMode === 'auto'}
                 >
                   STOP
                 </button>
@@ -417,7 +470,7 @@ export default function RobotControlPage() {
                       : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('right')}
-                  disabled={!isConnected || !robot.isOnline}
+                  disabled={!isConnected || !robot.isOnline || currentMode === 'auto'}
                 >
                   🡒
                 </button>
@@ -430,7 +483,7 @@ export default function RobotControlPage() {
                       : 'bg-blue-500 text-white  hover:bg-blue-600 border-blue-500'
                   }`}
                   onClick={() => sendMovementCommand('backward')}
-                  disabled={!isConnected || !robot.isOnline}
+                  disabled={!isConnected || !robot.isOnline || currentMode === 'auto'}
                 >
                   🡓
                 </button>
