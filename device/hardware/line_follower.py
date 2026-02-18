@@ -1,9 +1,27 @@
 """
 Line Following Module using PID Controller
 Autonomous line tracking using 5-sensor IR array
+
+Robust implementation with:
+- Weighted continuous error calculation
+- PID with anti-windup and derivative filtering
+- Minimum motor speed to prevent stalling
+- Smart multi-phase line recovery
+- Intersection detection
+- Throttled debug output to prevent I/O bottleneck
 """
 import time
 from config import Config
+
+
+# Sensor position weights for error calculation
+SENSOR_WEIGHTS = {
+    'left2': -2.0,
+    'left1': -1.0,
+    'center': 0.0,
+    'right1': 1.0,
+    'right2': 2.0,
+}
 
 
 class LineFollower:
@@ -11,283 +29,323 @@ class LineFollower:
     PID-based line following controller
     Uses 5 IR sensors to maintain position on black line
     """
-    
+
     def __init__(self, motors, sensors):
         """
         Initialize line follower
-        
+
         Args:
             motors: MotorController instance
             sensors: SensorArray instance
         """
         self.motors = motors
         self.sensors = sensors
-        
+
         # PID controller parameters
         self.kp = Config.LINE_FOLLOW_KP
         self.ki = Config.LINE_FOLLOW_KI
         self.kd = Config.LINE_FOLLOW_KD
-        
+
         # PID state
-        self.previous_error = 0
-        self.integral = 0
+        self.previous_error = 0.0
+        self.integral = 0.0
         self.last_time = time.time()
-        
+        self.last_correction = 0.0  # for smoothing
+
         # Line following speed
         self.base_speed = Config.LINE_FOLLOW_SPEED
-        
+        # Minimum motor speed so neither wheel fully stalls during turns
+        self.min_motor_speed = max(15, self.base_speed * 0.25)
+
         # Line lost handling
         self.line_lost_counter = 0
-        self.last_direction = 'center'  # Track last known direction
+        self.last_known_error = 0.0  # continuous error value when line was last seen
+        self.last_direction = 'center'
         self.max_lost_iterations = Config.LINE_LOST_MAX_COUNT
-        self.search_direction = 'right'  # Direction for 360 search
-        
+        self.search_phase = 0  # track which recovery phase we're in
+        self.search_direction = 'right'
+
+        # Debug throttle — only print every N iterations to avoid I/O bottleneck
+        self._iteration = 0
+        self._debug_every = 10  # print every 10th iteration (~2 Hz at 20 Hz loop)
+
         if Config.DEBUG:
             print(f"[LineFollower] Initialized with PID: Kp={self.kp}, Ki={self.ki}, Kd={self.kd}")
-            print(f"[LineFollower] Base speed: {self.base_speed}")
+            print(f"[LineFollower] Base speed: {self.base_speed}, Min motor speed: {self.min_motor_speed}")
             print(f"[LineFollower] Motor correction inverted: {Config.INVERT_MOTOR_CORRECTION}")
-    
-    def get_line_error(self):
-        """Calculate line position error from sensor readings
-        
-        Returns weighted position error:
-        - Negative = line is left of center (turn left)
-        - Positive = line is right of center (turn right)
-        - 0 = line is centered
-        
-        Sensor weights:
-        left2: -2, left1: -1, center: 0, right1: +1, right2: +2
+            print(f"[LineFollower] Sensor inversion: {Config.INVERT_LINE_SENSORS}")
+
+    # ------------------------------------------------------------------
+    # Sensor reading & error calculation
+    # ------------------------------------------------------------------
+
+    def _read_sensors(self):
+        """Read and optionally invert line sensor values.
+        Returns dict with 0 = on line, 1 = off line (after inversion if configured).
         """
-        sensors = self.sensors.read_line_sensors()
-        
-        # Invert sensor values if configured (some sensors return 1 for black line)
+        raw = self.sensors.read_line_sensors()
         if Config.INVERT_LINE_SENSORS:
-            sensors = {k: 1 - v for k, v in sensors.items()}
-        
-        # Define sensor positions (weighted)
-        positions = {
-            'left2': -2,
-            'left1': -1,
-            'center': 0,
-            'right1': 1,
-            'right2': 2
-        }
-        
-        # Calculate weighted average position
-        # Sensor value: 0 = on line (black), 1 = off line (white)
-        # We want to find where the line is
-        total_weight = 0
-        weighted_sum = 0
-        sensors_on_line = 0
-        
-        for sensor_name, sensor_value in sensors.items():
-            if sensor_value == 0:  # Sensor detects line
-                sensors_on_line += 1
-                weight = positions[sensor_name]
-                total_weight += 1
-                weighted_sum += weight
-        
-        # DEBUG: Always print sensor values to diagnose issue
-        sensor_str = f"L2={sensors['left2']} L1={sensors['left1']} C={sensors['center']} R1={sensors['right1']} R2={sensors['right2']}"
-        print(f"[LineFollower] Sensors: {sensor_str} | Detected: {sensors_on_line} sensors")
-        
-        # Calculate error
-        if sensors_on_line == 0:
-            # Line lost - return None to trigger search behavior
-            return None
-        
-        # Average position error
-        error = weighted_sum / total_weight if total_weight > 0 else 0
-        
-        if Config.DEBUG:
-            print(f"[LineFollower] Error: {error:.2f}")
-        
+            return {k: 1 - v for k, v in raw.items()}
+        return raw
+
+    def get_line_error(self):
+        """Calculate line position error from sensor readings.
+
+        Returns:
+            float | None:
+                Weighted position error in range roughly [-2, +2].
+                - Negative → line is to the left → robot should turn left
+                - Positive → line is to the right → robot should turn right
+                - 0 → line is centred
+                - None → no sensor detects the line (line lost)
+        """
+        sensors = self._read_sensors()
+
+        # Count active sensors and compute weighted average position
+        weighted_sum = 0.0
+        active_count = 0
+
+        for name, value in sensors.items():
+            if value == 0:  # sensor detects line
+                active_count += 1
+                weighted_sum += SENSOR_WEIGHTS[name]
+
+        # Throttled debug output
+        should_print = Config.DEBUG and (self._iteration % self._debug_every == 0)
+        if should_print:
+            s = sensors
+            sensor_str = (f"L2={s['left2']} L1={s['left1']} C={s['center']} "
+                          f"R1={s['right1']} R2={s['right2']}")
+            print(f"[LineFollower] Sensors: {sensor_str} | Active: {active_count}")
+
+        if active_count == 0:
+            return None  # line lost
+
+        error = weighted_sum / active_count
         return error
-    
+
+    def detect_intersection(self, sensors=None):
+        """Check if robot is on an intersection (4+ sensors active)."""
+        if sensors is None:
+            sensors = self._read_sensors()
+        active = sum(1 for v in sensors.values() if v == 0)
+        return active >= 4
+
+    # ------------------------------------------------------------------
+    # PID controller
+    # ------------------------------------------------------------------
+
     def calculate_pid_correction(self, error):
         """
-        Calculate PID correction value
-        
+        Calculate PID correction value.
+
         Args:
-            error: Current position error
-            
+            error: Current position error (roughly -2 to +2)
+
         Returns:
-            correction: Motor speed adjustment (-100 to +100)
+            correction: Motor speed adjustment
         """
         current_time = time.time()
-        delta_time = current_time - self.last_time
-        
-        if delta_time <= 0:
-            delta_time = 0.01  # Prevent division by zero
-        
-        # Proportional term
+        dt = current_time - self.last_time
+        if dt <= 0:
+            dt = 0.01
+
+        # --- Proportional ---
         p_term = self.kp * error
-        
-        # Integral term (accumulate error over time)
-        self.integral += error * delta_time
-        # Anti-windup: limit integral accumulation
-        self.integral = max(-50, min(50, self.integral))
+
+        # --- Integral with anti-windup ---
+        self.integral += error * dt
+        # Clamp integral to prevent windup (scaled to be meaningful)
+        max_integral = 10.0
+        self.integral = max(-max_integral, min(max_integral, self.integral))
         i_term = self.ki * self.integral
-        
-        # Derivative term (rate of change)
-        derivative = (error - self.previous_error) / delta_time
-        d_term = self.kd * derivative
-        
-        # Total correction
+
+        # --- Derivative (with simple low-pass filter to reduce noise) ---
+        raw_derivative = (error - self.previous_error) / dt
+        # Low-pass: blend with previous to smooth spikes
+        alpha = 0.7  # 0 = full filter, 1 = no filter
+        filtered_derivative = alpha * raw_derivative
+        d_term = self.kd * filtered_derivative
+
         correction = p_term + i_term + d_term
-        
+
+        # Smooth correction to avoid sudden motor jerks
+        smooth_factor = 0.3  # 0 = no smoothing, 1 = full old value
+        correction = (1 - smooth_factor) * correction + smooth_factor * self.last_correction
+
         # Update state
         self.previous_error = error
         self.last_time = current_time
-        
-        if Config.DEBUG:
-            print(f"[LineFollower] PID: P={p_term:.2f}, I={i_term:.2f}, D={d_term:.2f}, Correction={correction:.2f}")
-        
+        self.last_correction = correction
+
+        if Config.DEBUG and (self._iteration % self._debug_every == 0):
+            print(f"[LineFollower] PID: P={p_term:.1f} I={i_term:.1f} D={d_term:.1f} → corr={correction:.1f}")
+
         return correction
-    
+
+    # ------------------------------------------------------------------
+    # Motor application
+    # ------------------------------------------------------------------
+
     def apply_correction(self, correction):
         """
-        Apply PID correction to motor speeds
-        
-        Args:
-            correction: Speed adjustment value
-            Positive correction = line is right, need to turn right
-            Negative correction = line is left, need to turn left
+        Apply PID correction to motor speeds with minimum speed clamping.
+
+        Positive correction → line is to the right → speed up left, slow right → turn right.
+        Negative correction → line is to the left → speed up right, slow left → turn left.
         """
-        # Invert correction if configured (if robot turns wrong way)
         if Config.INVERT_MOTOR_CORRECTION:
             correction = -correction
-        
-        # Calculate individual motor speeds
-        # When line is right (+correction), left motor faster, right slower → turn right
-        # When line is left (-correction), right motor faster, left slower → turn left
+
         left_speed = self.base_speed + correction
         right_speed = self.base_speed - correction
-        
-        # Clamp speeds to valid range (0-100)
-        left_speed = max(0, min(100, left_speed))
-        right_speed = max(0, min(100, right_speed))
-        
-        # Determine turn direction for display
-        if abs(correction) < 2:
-            direction = "STRAIGHT"
-        elif correction > 0:
-            direction = "RIGHT ➜"
-        else:
-            direction = "⬅ LEFT"
-        
-        # Always print motor speeds for debugging
-        print(f"[LineFollower] {direction} | L={left_speed:.1f} R={right_speed:.1f} | corr={correction:.1f}")
-        
-        # Apply smooth differential steering (both motors forward)
+
+        # Clamp to valid range but enforce a minimum so neither wheel stalls
+        left_speed = max(self.min_motor_speed, min(100, left_speed))
+        right_speed = max(self.min_motor_speed, min(100, right_speed))
+
+        if Config.DEBUG and (self._iteration % self._debug_every == 0):
+            if abs(correction) < 2:
+                direction = "STRAIGHT"
+            elif correction > 0:
+                direction = "RIGHT"
+            else:
+                direction = "LEFT"
+            print(f"[LineFollower] {direction} | L={left_speed:.0f} R={right_speed:.0f} | corr={correction:.1f}")
+
         self.motors.set_motor_speeds(left_speed, right_speed)
-    
+
+    # ------------------------------------------------------------------
+    # Line-lost recovery
+    # ------------------------------------------------------------------
+
     def handle_line_lost(self):
         """
-        Handle situation when line is completely lost
-        Implements 360-degree rotation search pattern
+        Multi-phase recovery when line is completely lost.
+
+        Phase 1 (0-8 iter, ~400 ms): Creep forward — line may reappear.
+        Phase 2 (9-35 iter, ~1.3 s): Rotate toward last-known direction at reduced speed.
+        Phase 3 (36-70 iter, ~1.7 s): Rotate opposite direction (wider search).
+        Phase 4: Give up → stop motors, signal failure.
+
+        Returns True while still searching, False when giving up.
         """
         self.line_lost_counter += 1
-        
-        if self.line_lost_counter == 1:
-            print("\n[LineFollower] ⚠ LINE LOST! Starting recovery...")
-            print("[LineFollower] Phase 1: Moving forward to reacquire...")
-            self.motors.forward(self.base_speed * 0.5)
+        count = self.line_lost_counter
+
+        # Reduced search speed to avoid overshooting
+        search_speed = min(Config.TURN_MOTOR_SPEED, 45)
+
+        # ── Phase 1: creep forward ──────────────────────────────
+        if count <= 8:
+            if count == 1:
+                print("[LineFollower] ⚠ LINE LOST — Phase 1: creep forward")
+                # Decide search direction from last known error
+                if self.last_known_error < -0.3:
+                    self.search_direction = 'left'
+                elif self.last_known_error > 0.3:
+                    self.search_direction = 'right'
+                else:
+                    # Default: try the side where line was last seen, or right
+                    self.search_direction = self.last_direction if self.last_direction != 'center' else 'right'
+
+            self.motors.forward(self.base_speed * 0.4)
             return True
-            
-        elif self.line_lost_counter <= 5:
-            # First few iterations: continue forward slowly
-            print(f"[LineFollower] Phase 1: Forward search ({self.line_lost_counter}/5)")
-            self.motors.forward(self.base_speed * 0.5)
-            return True
-            
-        elif self.line_lost_counter == 6:
-            print("[LineFollower] Phase 2: 360° rotation search - starting...")
-            # Determine rotation direction based on last known position
-            if self.previous_error < 0:
-                print("[LineFollower] Rotating LEFT (line was on left)")
-                self.search_direction = 'left'
-            else:
-                print("[LineFollower] Rotating RIGHT (line was on right)")
-                self.search_direction = 'right'
-            return True
-            
-        elif self.line_lost_counter <= 50:  # About 2-3 seconds at 20Hz
-            # 360-degree rotation search
-            progress = self.line_lost_counter - 6
-            if progress % 10 == 0:
-                print(f"[LineFollower] Phase 2: Rotating... ({progress}/44)")
-            
+
+        # ── Phase 2: rotate toward last-known side ──────────────
+        if count <= 35:
+            if count == 9:
+                print(f"[LineFollower] Phase 2: rotate {self.search_direction} (last error={self.last_known_error:.1f})")
+
             if self.search_direction == 'left':
-                self.motors.turn_left(Config.TURN_MOTOR_SPEED)
+                self.motors.turn_left(search_speed)
             else:
-                self.motors.turn_right(Config.TURN_MOTOR_SPEED)
+                self.motors.turn_right(search_speed)
             return True
-            
-        elif self.line_lost_counter <= 55:
-            # Brief pause
-            print("[LineFollower] Phase 3: Final check...")
-            self.motors.stop()
+
+        # ── Phase 3: rotate opposite direction (wider sweep) ────
+        if count <= 70:
+            if count == 36:
+                opposite = 'right' if self.search_direction == 'left' else 'left'
+                print(f"[LineFollower] Phase 3: counter-rotate {opposite}")
+
+            if self.search_direction == 'left':
+                self.motors.turn_right(search_speed)
+            else:
+                self.motors.turn_left(search_speed)
             return True
-            
-        else:
-            # Line completely lost - give up
-            print("\n[LineFollower] ❌ RECOVERY FAILED - Line not found after 360° search")
-            print("[LineFollower] Stopping robot and switching to manual mode\n")
-            self.motors.stop()
-            return False
-    
+
+        # ── Phase 4: give up ────────────────────────────────────
+        print("[LineFollower] ❌ RECOVERY FAILED — line not found")
+        self.motors.stop()
+        return False
+
+    # ------------------------------------------------------------------
+    # Main update loop
+    # ------------------------------------------------------------------
+
     def update(self):
         """
-        Main line following update - call this in a loop
-        
+        Main line following update — call this in a loop.
+
         Returns:
-            bool: True if successfully following, False if line lost
+            bool: True if following or recovering, False if recovery failed.
         """
-        # Get current line position error
+        self._iteration += 1
+
+        # Read error
         error = self.get_line_error()
-        
-        # Check if line is detected
+
         if error is None:
-            # Line not detected
+            # Line lost
             return self.handle_line_lost()
-        
-        # Line detected - reset lost counter
+
+        # ── Line found ──────────────────────────────────────────
+        if self.line_lost_counter > 0:
+            print(f"[LineFollower] ✓ Line reacquired after {self.line_lost_counter} iterations")
         self.line_lost_counter = 0
-        
-        # Update last known direction
-        if error < -0.5:
+
+        # Remember last known error for recovery direction
+        self.last_known_error = error
+        if error < -0.3:
             self.last_direction = 'left'
-        elif error > 0.5:
+        elif error > 0.3:
             self.last_direction = 'right'
         else:
             self.last_direction = 'center'
-        
-        # Calculate PID correction
+
+        # PID
         correction = self.calculate_pid_correction(error)
-        
-        # Apply correction to motors
+
+        # Drive
         self.apply_correction(correction)
-        
+
         return True
-    
+
+    # ------------------------------------------------------------------
+    # Utility
+    # ------------------------------------------------------------------
+
     def reset(self):
         """Reset PID controller state"""
-        self.previous_error = 0
-        self.integral = 0
+        self.previous_error = 0.0
+        self.integral = 0.0
         self.last_time = time.time()
+        self.last_correction = 0.0
         self.line_lost_counter = 0
+        self.last_known_error = 0.0
         self.last_direction = 'center'
-        
+        self._iteration = 0
         if Config.DEBUG:
             print("[LineFollower] Controller reset")
-    
+
     def set_speed(self, speed):
         """Update base speed for line following"""
         self.base_speed = max(20, min(100, speed))
+        self.min_motor_speed = max(15, self.base_speed * 0.25)
         if Config.DEBUG:
             print(f"[LineFollower] Base speed set to {self.base_speed}")
-    
+
     def set_pid_gains(self, kp=None, ki=None, kd=None):
         """Update PID gains on the fly"""
         if kp is not None:
@@ -296,6 +354,5 @@ class LineFollower:
             self.ki = ki
         if kd is not None:
             self.kd = kd
-        
         if Config.DEBUG:
             print(f"[LineFollower] PID gains updated: Kp={self.kp}, Ki={self.ki}, Kd={self.kd}")

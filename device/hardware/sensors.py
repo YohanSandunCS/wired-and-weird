@@ -26,11 +26,23 @@ class SensorArray:
         GPIO.setup(Config.IR_SENSOR_RIGHT1, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(Config.IR_SENSOR_RIGHT2, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         
-        # Proximity sensor
-        GPIO.setup(Config.PROXIMITY_SENSOR, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        # IMPORTANT: Only setup proximity/bump if enabled AND pins don't conflict
+        # with motor enable pins (default config has pin conflicts!)
+        motor_pins = {Config.MOTOR_LEFT_ENABLE, Config.MOTOR_RIGHT_ENABLE,
+                      Config.MOTOR_LEFT_FORWARD, Config.MOTOR_LEFT_BACKWARD,
+                      Config.MOTOR_RIGHT_FORWARD, Config.MOTOR_RIGHT_BACKWARD}
         
-        # Bump sensor
-        GPIO.setup(Config.BUMP_SENSOR, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        # Proximity sensor - skip if pin conflicts with motor pins
+        if Config.ENABLE_PROXIMITY and Config.PROXIMITY_SENSOR not in motor_pins:
+            GPIO.setup(Config.PROXIMITY_SENSOR, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        elif Config.PROXIMITY_SENSOR in motor_pins:
+            print(f"[SensorArray] ⚠ PROXIMITY pin {Config.PROXIMITY_SENSOR} conflicts with motor pin! Skipping setup.")
+        
+        # Bump sensor - skip if pin conflicts with motor pins
+        if Config.ENABLE_BUMP and Config.BUMP_SENSOR not in motor_pins:
+            GPIO.setup(Config.BUMP_SENSOR, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        elif Config.BUMP_SENSOR in motor_pins:
+            print(f"[SensorArray] ⚠ BUMP pin {Config.BUMP_SENSOR} conflicts with motor pin! Skipping setup.")
     
     def read_line_sensors(self):
         """
@@ -50,6 +62,12 @@ class SensorArray:
         Read proximity sensor
         Returns True if obstacle detected, False otherwise
         """
+        if not Config.ENABLE_PROXIMITY:
+            return False
+        # Guard against pin conflict with motor pins
+        motor_pins = {Config.MOTOR_LEFT_ENABLE, Config.MOTOR_RIGHT_ENABLE}
+        if Config.PROXIMITY_SENSOR in motor_pins:
+            return False
         return GPIO.input(Config.PROXIMITY_SENSOR) == 0
     
     def read_bump(self):
@@ -57,6 +75,12 @@ class SensorArray:
         Read bump sensor
         Returns True if collision detected, False otherwise
         """
+        if not Config.ENABLE_BUMP:
+            return False
+        # Guard against pin conflict with motor pins
+        motor_pins = {Config.MOTOR_LEFT_ENABLE, Config.MOTOR_RIGHT_ENABLE}
+        if Config.BUMP_SENSOR in motor_pins:
+            return False
         return GPIO.input(Config.BUMP_SENSOR) == 0
     
     def read_all(self):
