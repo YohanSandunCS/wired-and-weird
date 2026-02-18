@@ -275,6 +275,9 @@ export function useVoiceAssistant(options: VoiceAssistantOptions = {}): VoiceAss
 // Utility function to speak success message (can be called externally)
 export function speakSuccess(text: string = 'Access granted. Welcome.') {
   if (typeof window !== 'undefined' && window.speechSynthesis) {
+    // Cancel any ongoing speech first to prevent repeats
+    window.speechSynthesis.cancel()
+    
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = 'en-US'
     utterance.rate = 1.0

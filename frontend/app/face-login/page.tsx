@@ -79,6 +79,10 @@ export default function FaceLoginPage() {
     if (autoScanTimerRef.current) {
       clearInterval(autoScanTimerRef.current)
     }
+    // Cancel any ongoing speech synthesis
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel()
+    }
   }
 
   const initializeCamera = async () => {
@@ -232,7 +236,12 @@ export default function FaceLoginPage() {
         setMessage(`Welcome ${data.user}! Redirecting...`)
         setMessageType('success')
         
-        // Speak success message
+        // Cancel any ongoing speech first
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+          window.speechSynthesis.cancel()
+        }
+        
+        // Speak success message once
         speakSuccess(`Access granted. Welcome ${data.user}.`)
         
         // Update authentication state AND team session
@@ -240,10 +249,13 @@ export default function FaceLoginPage() {
         // Use the username from backend as team code for face-authenticated users
         login(data.user || 'ADMIN')
         
-        // Redirect to console after brief delay
+        // Cancel speech and redirect after speech completes
         setTimeout(() => {
+          if (typeof window !== 'undefined' && window.speechSynthesis) {
+            window.speechSynthesis.cancel()
+          }
           router.push('/console')
-        }, 1000)
+        }, 2500)
       } else {
         setMessage(data.message || 'Face not recognized')
         setMessageType('error')

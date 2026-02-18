@@ -37,6 +37,10 @@ export default function EnrollPage() {
     if (autoEnrollTimerRef.current) {
       clearInterval(autoEnrollTimerRef.current)
     }
+    // Cancel any ongoing speech synthesis
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel()
+    }
   }
 
   const fetchEnrolledUsers = async () => {
@@ -194,6 +198,11 @@ export default function EnrollPage() {
         setMessage(data.message || 'Enrollment successful! You can now login.')
         setMessageType('success')
         
+        // Cancel any ongoing speech first
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+          window.speechSynthesis.cancel()
+        }
+        
         // Voice confirmation
         speakSuccess('Enrollment successful. You can now login.')
         
@@ -206,10 +215,13 @@ export default function EnrollPage() {
         // Refresh user list
         fetchEnrolledUsers()
         
-        // Redirect to login after delay
+        // Cancel speech and redirect after speech completes
         setTimeout(() => {
+          if (typeof window !== 'undefined' && window.speechSynthesis) {
+            window.speechSynthesis.cancel()
+          }
           router.push('/')
-        }, 2000)
+        }, 2500)
       } else {
         setMessage(data.message || 'Enrollment failed')
         setMessageType('error')
